@@ -340,6 +340,7 @@ export default function RegisterStepper() {
         setAwaitingEmailConfirmation(true);
         return;
       }
+      if (!authUserId) throw new Error('Please sign in to finish setting up your account.');
       try {
         let photo:File|null=null;
         if(profilePhoto) {
