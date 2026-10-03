@@ -1,0 +1,9 @@
+# Server-side member erasure — 2026-10-03
+
+Implemented protected admin erasure endpoint and service-only database helpers. A pending permanent request is required; administrator accounts are protected. Starting erasure marks the member inactive/deleted, preventing new app/storage access immediately. Jobs use a lease to prevent concurrent processing and survive deletion of the original request/account rows.
+
+The endpoint cancels linked recurring subscriptions when configured, removes files through the Storage API using Auth-ID paths/ownership, then transactionally deletes account relationships and the user record, and hard-deletes the Auth account. Storage failure stops database erasure. Database or Auth failure leaves a retryable job, never success. Completed retries are idempotent. Admin queue includes surviving jobs. Restore and cancellation are prohibited after an erasure job starts.
+
+Retained job evidence contains internal IDs, timestamps, state and generic failure text, without profile/contact details. This erases application records including member billing data; it does not purge historical backups, external payment-provider records, email recipients, downloaded files or another party's copies. A business retention policy is not yet configured. Existing signed URLs and downloaded copies require separate retention consideration.
+
+Validation: rollback database tests passed blocking/deletion/service privilege checks. scripts/check-member-erasure.cjs passed anonymous denial, actual private Storage cleanup, database record cleanup, Auth account removal and repeated completed request. Only a freshly created isolated account/file was erased, and test job evidence was cleaned up. TypeScript passed. Recurring-provider cancellation and actual admin browser submission remain untested; no genuine member account was erased.

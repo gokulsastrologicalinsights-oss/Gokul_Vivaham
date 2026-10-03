@@ -1,0 +1,36 @@
+export interface Profile {
+  id: string;
+  fullName: string;
+  gender: 'Male' | 'Female' | 'Other';
+  dob: string;
+  age: number;
+  mobileNumber: string;
+  email: string;
+  maritalStatus: 'Never Married' | 'Widowed' | 'Divorced' | 'Awaiting Divorce';
+  motherTongue: string;
+  religion: string;
+  caste?: string;
+  subCaste?: string;
+  star: string;
+  rasi: string;
+  gothram?: string;
+  height: number;
+  weight?: number;
+  physicalStatus: 'Normal' | 'Physically Challenged';
+  education: string;
+  occupation: string;
+  companyName?: string;
+  annualIncome: string;
+  workLocation: string;
+  fatherName: string;
+  fatherOccupation?: string;
+  motherName: string;
+  motherOccupation?: string;
+  siblings?: string;
+  nativePlace: string;
+  familyType: 'Nuclear' | 'Joint';
+  aboutMe?: string;
+  partnerExpectations?: string;
+  score?: number;
+  isVerified?: boolean;
+}

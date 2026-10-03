@@ -1,0 +1,5 @@
+Consultation calendar — 2026-10-03
+
+Admin scheduling supports 30/60-minute duration, displayed to admins and members. Existing bookings default to 30 minutes. The service-only scheduling transaction serializes calendar saves with an advisory lock before checking half-open time ranges: adjacent slots are allowed, overlaps for the same member/astrologer are rejected, and unassigned astrologer bookings reserve the shared calendar. Approved bookings only; future appointments required. Identical saves are idempotent. Scheduling aligns consultation_date to the appointment date in Asia/Kolkata. Members cannot change duration or scheduling fields.
+
+Verified: TypeScript; rollback database tests for overlap denial, adjacent slots, identical-save notification deduplication and unauthorized actor denial. Fixtures rolled back. Browser selection, independent simultaneous-session acceptance and provider calendar integration remain pending. Existing overlapping schedules are not automatically moved. No external meetings or calendar events are created.

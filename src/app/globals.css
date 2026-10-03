@@ -1,0 +1,252 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Outfit', 'Inter', sans-serif;
+  --font-tamil: 'Noto Sans Tamil', sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-gold: 0 4px 20px -2px rgba(212, 175, 55, 0.25);
+  --shadow-maroon: 0 4px 20px -2px rgba(183, 28, 28, 0.25);
+
+  /* Legacy sandal classes mapping for backward compatibility */
+  --color-sandal-50: var(--background);
+  --color-sandal-100: var(--card);
+  --color-sandal-200: var(--surface);
+  --color-sandal-300: var(--border);
+  --color-sandal-400: var(--accent);
+  --color-sandal-500: var(--accent);
+
+  /* Legacy zinc classes mapping for complete theme-ability */
+  --color-zinc-200: var(--zinc-200-dynamic);
+  --color-zinc-300: var(--zinc-300-dynamic);
+  --color-zinc-400: var(--muted);
+  --color-zinc-450: var(--muted);
+  --color-zinc-500: var(--muted);
+  --color-zinc-600: var(--muted);
+  --color-zinc-650: var(--muted);
+  --color-zinc-700: var(--muted);
+  --color-zinc-750: var(--muted);
+  --color-zinc-800: var(--zinc-800-dynamic);
+  --color-zinc-850: var(--zinc-850-dynamic);
+  --color-zinc-900: var(--card);
+  --color-zinc-950: var(--background);
+
+  /* Legacy gold classes mapping for accessibility & light mode contrast */
+  --color-gold-50: var(--surface);
+  --color-gold-100: var(--border);
+  --color-gold-200: var(--secondary);
+  --color-gold-300: var(--primary);
+  --color-gold-400: var(--primary);
+  --color-gold-500: var(--primary);
+  --color-gold-600: var(--secondary);
+  --color-gold-700: var(--secondary);
+  --color-gold-800: var(--primary);
+  --color-gold-900: var(--primary);
+
+  /* Legacy maroon classes mapping for dark mode compatibility */
+  --color-maroon-50: var(--card);
+  --color-maroon-100: var(--surface);
+  --color-maroon-200: var(--border);
+  --color-maroon-300: var(--primary);
+  --color-maroon-400: var(--primary);
+  --color-maroon-500: var(--primary);
+  --color-maroon-600: var(--primary);
+  --color-maroon-700: var(--primary);
+  --color-maroon-800: var(--secondary);
+  --color-maroon-900: var(--secondary);
+  --color-maroon-950: var(--background);
+
+  /* Brand specific colors (for absolute usage) */
+  --color-brand-red: #B71C1C;
+  --color-brand-red-light: #D32F2F;
+  --color-brand-gold: #D4AF37;
+  --color-brand-gold-soft: #F5E6A8;
+}
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #1A1A1A;
+  --card: #FFFDF8;
+  --card-foreground: #1A1A1A;
+  --surface: #FAFAFA;
+  --surface-foreground: #1A1A1A;
+
+  --primary: #B71C1C; /* Deep Red */
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #D32F2F; /* Secondary Red */
+  --secondary-foreground: #FFFFFF;
+
+  --accent: #D4AF37; /* Royal Gold */
+  --accent-foreground: #1A1A1A;
+
+  --border: #E5E5E5;
+  --muted: #555555; /* Text Secondary */
+
+  --success: #2E7D32;
+  --warning: #F57C00;
+  --destructive: #C62828;
+
+  /* Dynamic Zinc Variables for High Contrast Legacy Support */
+  --zinc-200-dynamic: var(--border); /* #E5E5E5 (light border in light mode) */
+  --zinc-300-dynamic: #D1D5DB;       /* light border in light mode */
+  --zinc-800-dynamic: var(--foreground); /* #1A1A1A (dark text in light mode) */
+  --zinc-850-dynamic: var(--foreground); /* #1A1A1A (dark text in light mode) */
+}
+
+.dark {
+  --background: #0B0B0B;
+  --foreground: #FFFFFF;
+  --card: #141414;
+  --card-foreground: #FFFFFF;
+  --surface: #1B1B1B;
+  --surface-foreground: #FFFFFF;
+
+  --primary: #D4AF37; /* Royal Gold in Dark Mode */
+  --primary-foreground: #0B0B0B;
+
+  --secondary: #F5E6A8; /* Secondary Gold in Dark Mode */
+  --secondary-foreground: #0B0B0B;
+
+  --accent: #B71C1C; /* Deep Red in Dark Mode */
+  --accent-foreground: #FFFFFF;
+
+  --border: #2A2A2A;
+  --muted: #CCCCCC; /* Text Secondary */
+
+  --success: #4CAF50;
+  --warning: #FFA726;
+  --destructive: #EF5350;
+
+  /* Dynamic Zinc Variables for High Contrast Legacy Support */
+  --zinc-200-dynamic: var(--foreground); /* #FFFFFF (light text in dark mode) */
+  --zinc-300-dynamic: var(--muted);      /* #CCCCCC (light text in dark mode) */
+  --zinc-800-dynamic: var(--border);      /* #2A2A2A (dark border in dark mode) */
+  --zinc-850-dynamic: var(--border);      /* #2A2A2A (dark border in dark mode) */
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6, .font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Custom premium styles */
+.luxury-gradient {
+  background: linear-gradient(135deg, #800020 0%, #550014 100%);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #d4af37 0%, #b2912a 100%);
+}
+
+.gold-border {
+  border-color: #d4af37;
+}
+
+.glass-panel {
+  background: rgba(253, 251, 247, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.dark .glass-panel {
+  background: rgba(18, 16, 14, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+/* Custom transitions and scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cb9d50;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b2912a;
+}
+
+/* Input text and bg color */
+input,
+textarea,
+select {
+  color: var(--foreground) !important;
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+select option {
+  color: var(--foreground) !important;
+  background-color: var(--background) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 0.7;
+}
+
+/* Accessibility & Touch Targets */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
+
