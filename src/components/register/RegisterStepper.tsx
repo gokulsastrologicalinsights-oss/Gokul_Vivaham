@@ -329,7 +329,17 @@ export default function RegisterStepper() {
       }
 
       const authUserId = signUpData?.user?.id;
-      if(!authUserId) throw new Error('Registration could not be completed. Please retry.');
+      // Confirmation-required signup can succeed without a user in the SDK response.
+      // Do not ask the member to repeat a signup that Auth already accepted.
+      if (!authUserId && !signUpData?.session) {
+        if (profilePhoto || horoscopeFile) {
+          setUploadNote('After confirming your email and signing in, please select your photo and horoscope again to upload them for review.');
+        }
+        localStorage.removeItem('gokul_matrimony_register_draft');
+        setIsSubmitting(false);
+        setAwaitingEmailConfirmation(true);
+        return;
+      }
       try {
         let photo:File|null=null;
         if(profilePhoto) {
