@@ -8,4 +8,6 @@ language sql stable security definer set search_path='' as $$
 $$;
 revoke execute on function private.admin_verified() from public,anon;
 grant execute on function private.admin_verified() to authenticated,service_role;
+-- Disable the legacy exception for older deployments as well.
+update public.admin_users set password_login_allowed=false where password_login_allowed;
 notify pgrst,'reload schema';
