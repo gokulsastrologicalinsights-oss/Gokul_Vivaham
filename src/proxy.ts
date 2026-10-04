@@ -2,19 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { resolveAccess } from '@/lib/auth/access';
 
-const ROLE_LEVELS: Record<string, number> = {
-  user: 1,
-  free: 1,
-  premium_user: 2,
-  silver: 2,
-  gold: 2,
-  platinum: 2,
-  diamond: 2,
-  moderator: 3,
-  admin: 4,
-  super_admin: 5,
-};
-
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
@@ -32,7 +19,6 @@ export async function proxy(request: NextRequest) {
 
   const access = await resolveAccess(token);
   const isLoggedIn = Boolean(access && !access.mfaRequired);
-  const role = access?.role || 'user';
 
   // Handle redirect if not authenticated
   if (isProtectedRoute && !isLoggedIn) {
@@ -55,8 +41,6 @@ export async function proxy(request: NextRequest) {
 
   // Role-based Access Control checks
   if (isLoggedIn) {
-    const roleLevel = ROLE_LEVELS[role] || 1;
-
     // 1. Admin/Moderator protection (level >= 3 required)
     if (isAdminRoute && !access?.isAdmin) {
       const url = request.nextUrl.clone();
@@ -64,13 +48,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // 2. Premium chat protection (level >= 2 required)
-    const isChatRoute = path === '/chat' || path.startsWith('/chat/') || path === '/dashboard/chat' || path.startsWith('/dashboard/chat/');
-    if (isChatRoute && roleLevel < 2) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/dashboard/subscription';
-      return NextResponse.redirect(url);
-    }
+    // Members may open the inbox; database policies restrict each conversation.
+    // Free members can only reply after receiving a paid member's message.
   }
 
   const response = NextResponse.next();
