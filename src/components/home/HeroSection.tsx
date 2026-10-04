@@ -118,7 +118,7 @@ export default function HeroSection() {
 
         {/* Hero Illustration / Visual Mockup */}
         <div className="lg:col-span-5 flex justify-center relative mt-12 lg:mt-0">
-          <div className="relative w-72 h-[340px] sm:w-80 sm:h-96 md:w-96 md:h-[450px]">
+          <div className="relative w-72 h-[560px] sm:w-80 sm:h-[580px] md:w-96 md:h-[600px]">
 
             
             {/* Background gold ring */}
@@ -126,10 +126,10 @@ export default function HeroSection() {
             
             {/* Profile Card Mock 1 */}
             <div className="absolute top-8 -left-4 w-64 p-4 rounded-2xl glass-panel shadow-lg border border-sandal-200/50 hover:translate-y-[-4px] transition-transform duration-300">
-              <div className="w-full h-40 rounded-xl bg-gradient-to-tr from-sandal-200 to-rose-100/50 dark:from-zinc-800 dark:to-maroon-950/20 relative overflow-hidden flex items-center justify-center">
-                <Heart className="h-12 w-12 text-maroon-500/20" />
+              <div className="w-full h-64 rounded-xl bg-gradient-to-tr from-sandal-200 to-rose-100/50 dark:from-zinc-800 dark:to-maroon-950/20 relative overflow-hidden flex items-center justify-center">
+                <img src="/hero-portraits/bride.png" alt="AI-generated fictional bride in a wedding silk saree" width={224} height={336} className="w-full h-full object-cover object-top" />
                 <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-emerald-600/90 text-[10px] font-bold text-white flex items-center gap-1 uppercase tracking-wide">
-                  <CheckCircle2 className="h-3 w-3" /> Verified
+                  Sample · AI
                 </div>
               </div>
               <div className="mt-3 flex flex-col text-left">
@@ -144,10 +144,10 @@ export default function HeroSection() {
 
             {/* Profile Card Mock 2 */}
             <div className="absolute bottom-6 -right-6 w-64 p-4 rounded-2xl glass-panel shadow-xl border border-gold-400/20 hover:translate-y-[-4px] transition-transform duration-300">
-              <div className="w-full h-40 rounded-xl bg-gradient-to-tr from-sandal-200 to-amber-100/50 dark:from-zinc-800 dark:to-gold-950/10 relative overflow-hidden flex items-center justify-center">
-                <Heart className="h-12 w-12 text-gold-500/20" />
+              <div className="w-full h-64 rounded-xl bg-gradient-to-tr from-sandal-200 to-amber-100/50 dark:from-zinc-800 dark:to-gold-950/10 relative overflow-hidden flex items-center justify-center">
+                <img src="/hero-portraits/groom.png" alt="AI-generated fictional groom in traditional wedding attire" width={224} height={336} className="w-full h-full object-cover object-top" />
                 <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-emerald-600/90 text-[10px] font-bold text-white flex items-center gap-1 uppercase tracking-wide">
-                  <CheckCircle2 className="h-3 w-3" /> Verified
+                  Sample · AI
                 </div>
               </div>
               <div className="mt-3 flex flex-col text-left">
@@ -172,4 +172,5 @@ export default function HeroSection() {
     </section>
   );
 }
+
 
