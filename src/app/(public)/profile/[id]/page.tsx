@@ -68,12 +68,16 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
         setCurrentUser(user);
 
         // 1. Fetch the target profile by profile_id, joining users table for digital verification flags
-        const { data: profileData } = await supabase
+        let { data: profileData } = await supabase
           .from('profiles')
           .select('*, users(email_verified, mobile_verified)')
           .eq('profile_id', id)
           .maybeSingle();
 
+        if (!profileData && user) {
+          const {data:alias}=await supabase.from('profile_id_aliases').select('profile_uuid').eq('old_id',id).maybeSingle();
+          if(alias){const result=await supabase.from('profiles').select('*, users(email_verified, mobile_verified)').eq('id',alias.profile_uuid).maybeSingle();profileData=result.data;}
+        }
         if (!profileData) {
           setProfile(null);
           setLoading(false);
@@ -695,3 +699,4 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
     </div>
   );
 }
+

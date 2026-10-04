@@ -18,8 +18,9 @@ export default function Samples(){
   <label className="block">About<textarea required maxLength={1500} value={editing.about} onChange={e=>setEditing({...editing,about:e.target.value})} className="block w-full bg-card border border-border p-2"/></label>
   <label className="block"><input type="checkbox" checked={editing.published} onChange={e=>setEditing({...editing,published:e.target.checked})}/> Show on sample page</label>
   <button disabled={busy} className="bg-primary text-primary-foreground rounded px-4 py-2">{busy?'Saving…':'Save'}</button><button type="button" disabled={busy} onClick={()=>setEditing(null)} className="ml-4 underline">Cancel</button>
- </form>:<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{profiles.map(p=><article key={p.id} className="border border-border rounded-xl p-4"><img src={`/sample-portraits/${p.portrait_id||p.id}.png`} alt={`Fictional portrait of ${p.name}`} loading="lazy" className="w-full h-48 object-cover rounded-xl mb-3"/><h2 className="font-semibold">{p.name}</h2><p>{p.gender} · {p.age} · {p.city}</p><p className="text-sm">{p.published?'Published':'Hidden'} · {p.id}</p><button onClick={()=>setEditing(p)} className="underline mt-3" aria-label={`Edit sample ${p.name}`}>Edit sample</button></article>)}</div>}
+ </form>:<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{profiles.map(p=><article key={p.id} className="border border-border rounded-xl p-4"><img src={`/sample-portraits/${p.portrait_id||p.id}.png`} alt={`Fictional portrait of ${p.name}`} loading="lazy" className="w-full h-48 object-cover rounded-xl mb-3"/><h2 className="font-semibold">{p.name}</h2><p>{p.gender} · {p.age} · {p.city}</p><p className="text-sm">{p.published?'Published':'Hidden'} · {p.profile_id}</p><button onClick={()=>setEditing(p)} className="underline mt-3" aria-label={`Edit sample ${p.name}`}>Edit sample</button></article>)}</div>}
  </div>;
 }
+
 
 

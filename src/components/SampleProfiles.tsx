@@ -19,12 +19,13 @@ export default function SampleProfiles({preview=false}:{preview?:boolean}){
   <Slider label="sample profiles">{(preview?previewProfiles:visible).map(p=><article key={p.id} className="border border-border bg-card rounded-2xl p-5">
    <span className="text-xs font-bold text-primary">SAMPLE · FICTIONAL</span>
    <img src={`/sample-portraits/${p.portrait_id||p.id}.png`} alt={`AI-generated fictional portrait of sample ${p.name}`} loading="lazy" className="my-4 h-56 w-full rounded-xl object-cover"/>
-   <h2 className="font-semibold text-lg">{p.name}</h2><p className="text-xs text-muted mb-3">{p.id} · {p.gender} · {p.age} years · {p.height_cm} cm</p>
+   <h2 className="font-semibold text-lg">{p.name}</h2><p className="text-xs text-muted mb-3">{p.profile_id} · {p.gender} · {p.age} years · {p.height_cm} cm</p>
    <p className="text-sm">{p.city} · {p.mother_tongue}</p><p className="text-sm">{p.education}</p><p className="text-sm">{p.occupation}</p><p className="text-sm mt-2">{p.religion} · {p.star}</p><p className="text-sm mt-3 leading-relaxed">{p.about}</p>
   </article>)}</Slider>
   {preview&&<Link href="/sample-profiles" className="inline-block mt-6 underline">Explore sample profiles</Link>}
  </section></>;
 }
+
 
 
 
