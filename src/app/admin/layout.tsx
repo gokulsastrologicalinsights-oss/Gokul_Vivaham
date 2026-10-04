@@ -57,6 +57,7 @@ export default function AdminLayout({
     { name: 'Consultations', href: '/admin/consultations', icon: Calendar, desc: 'Astrologer Bookings' },
     { name: 'Success Stories', href: '/admin/success-stories', icon: Heart, desc: 'Moderate User Stories' },
     { name: 'User Management', href: '/admin/users', icon: Users, desc: 'Profile Registry' },
+    { name: 'Sample Profiles', href: '/admin/samples', icon: Users, desc: 'Fictional showcase examples' },
     { name: 'Religion & Caste', href: '/admin/religion-community', icon: Database, desc: 'Manage communities & mapping' },
     { name: 'Member Announcements', href: '/admin/notifications', icon: Bell, desc: 'In-app announcements' },
     { name: 'Support Requests', href: '/admin/support', icon: Bell, desc: 'Member support queue' },

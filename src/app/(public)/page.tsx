@@ -8,6 +8,7 @@ import FeaturedProfilesCarousel from '@/components/home/FeaturedProfilesCarousel
 import AstroMatcher from '@/components/home/AstroMatcher';
 import SuccessStories from '@/components/home/SuccessStories';
 import FaqSection from '@/components/home/FaqSection';
+import SampleProfiles from '@/components/SampleProfiles';
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
 
       {/* FEATURED SPOTLIGHT CAROUSEL */}
       <FeaturedProfilesCarousel />
+      <SampleProfiles preview />
 
       {/* INTERACTIVE COMPATIBILITY CHECKER */}
       <AstroMatcher />
