@@ -564,7 +564,7 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
                         {checkoutLoading ? 'Processing...' : 'Unlock This Contact (₹199)'}
                       </button>
                       <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-none">
-                        Base: ₹169 | GST: ₹30 | Total: ₹199 (incl. GST)
+                        Service price: ₹199 · GST not charged
                       </span>
                     </div>
                   </div>
@@ -602,7 +602,7 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
                       {checkoutLoading ? 'Processing...' : 'Unlock Directly (₹199)'}
                     </button>
                     <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-none mt-1">
-                      Base: ₹169 | GST: ₹30 | Total: ₹199 (incl. GST)
+                      Service price: ₹199 · GST not charged
                     </span>
                   </div>
                 </div>

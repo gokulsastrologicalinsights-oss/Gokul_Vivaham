@@ -80,6 +80,7 @@ export const consultationService = {
         .from('consultation_bookings')
         .update({ payment_status: 'cancelled' })
         .eq('id', bookingId)
+        .eq('payment_status', 'pending')
         .select()
         .single();
 

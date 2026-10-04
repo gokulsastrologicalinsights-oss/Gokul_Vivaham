@@ -425,7 +425,7 @@ export default function Interests() {
                                   {checkoutLoading ? 'Processing...' : 'Unlock Contact (₹199)'}
                                 </button>
                                 <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-none">
-                                  Base: ₹169 | GST: ₹30 | Total: ₹199 (incl. GST)
+                                  Service price: ₹199 · GST not charged
                                 </span>
                               </div>
                             </div>

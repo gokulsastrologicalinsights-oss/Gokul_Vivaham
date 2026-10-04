@@ -65,15 +65,7 @@ export async function POST(req: Request) {
       }
       originalPrice = Number(plan.price);
       planDurationDays = plan.duration_days;
-      let pricingDetails = '';
-      if (plan.name.toLowerCase().includes('silver')) {
-        pricingDetails = ' (Base: ₹1,270, GST: ₹229)';
-      } else if (plan.name.toLowerCase().includes('gold')) {
-        pricingDetails = ' (Base: ₹2,542, GST: ₹457)';
-      } else if (plan.name.toLowerCase().includes('diamond') || plan.name.toLowerCase().includes('platinum')) {
-        pricingDetails = ' (Base: ₹5,084, GST: ₹915)';
-      }
-      description = `Gokul Vivaham - ${plan.name}${pricingDetails}`;
+      description = `Gokul Vivaham - ${plan.name}`;
     } else if (paymentType === 'featured_profile') {
       const days = Number(featuredDays) || 30;
       if (![15, 30].includes(days)) return NextResponse.json({ error: 'Choose a 15 or 30 day feature.' }, { status: 400 });
@@ -91,7 +83,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'targetProfileId is required for contact unlocks' }, { status: 400 });
       }
       originalPrice = 199;
-      description = `Gokul Vivaham - Single Contact Unlock (Base: ₹169, GST: ₹30)`;
+      description = `Gokul Vivaham - Single Contact Unlock`;
     } else {
       return NextResponse.json({ error: 'Invalid paymentType' }, { status: 400 });
     }
@@ -128,16 +120,7 @@ export async function POST(req: Request) {
 
     const finalPrice = Math.max(0, originalPrice - discount);
 
-    let gatewayChargePrice = finalPrice;
-    if (paymentType === 'consultation') {
-      const gstRate = 0.18;
-      const baseGst = Number((finalPrice * gstRate).toFixed(2));
-      const adjustment = appliedCouponId ? 0.00 : 1.00;
-      gatewayChargePrice = Number((finalPrice + baseGst + adjustment).toFixed(2));
-    } else if ((paymentType === 'subscription' || paymentType === 'contact_unlock') && finalPrice > 0) {
-      // Do not calculate GST dynamically at checkout. Charge final price only.
-      gatewayChargePrice = finalPrice;
-    }
+    const gatewayChargePrice = finalPrice; // Business is unregistered: no GST collected.
 
     // Call reusable payment service to create order
     if (!Number.isFinite(gatewayChargePrice) || !Number.isSafeInteger(Math.round(gatewayChargePrice * 100)) || Math.round(gatewayChargePrice * 100) < 100) {

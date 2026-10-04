@@ -18,9 +18,9 @@ const FEATURE_COPY = {
     title: 'Contact Credits Exhausted',
     desc: "You've used all your contact views for this subscription period. Upgrade to unlock more.",
     plans: [
-      { key: 'Silver', contacts: 15, price: '₹1,499', basePrice: '₹1,270', gst: '₹229' },
-      { key: 'Gold', contacts: 30, price: '₹2,999', basePrice: '₹2,542', gst: '₹457' },
-      { key: 'Diamond', contacts: 60, price: '₹5,999', basePrice: '₹5,084', gst: '₹915' },
+      { key: 'Silver', contacts: 15, price: '₹1,499' },
+      { key: 'Gold', contacts: 30, price: '₹2,999' },
+      { key: 'Diamond', contacts: 60, price: '₹5,999' },
     ],
     stat_label: 'Contact Views',
   },
@@ -29,9 +29,9 @@ const FEATURE_COPY = {
     title: 'Horoscope Report Credits Exhausted',
     desc: "You've used all your detailed horoscope match report credits. Upgrade for more reports.",
     plans: [
-      { key: 'Silver', contacts: 1, price: '₹1,499', basePrice: '₹1,270', gst: '₹229' },
-      { key: 'Gold', contacts: 5, price: '₹2,999', basePrice: '₹2,542', gst: '₹457' },
-      { key: 'Diamond', contacts: 10, price: '₹5,999', basePrice: '₹5,084', gst: '₹915' },
+      { key: 'Silver', contacts: 1, price: '₹1,499' },
+      { key: 'Gold', contacts: 5, price: '₹2,999' },
+      { key: 'Diamond', contacts: 10, price: '₹5,999' },
     ],
     stat_label: 'Reports',
   },
@@ -40,8 +40,8 @@ const FEATURE_COPY = {
     title: 'Consultation Credits Exhausted',
     desc: 'Your free consultation credits have been used. Upgrade to a higher plan for more consultations.',
     plans: [
-      { key: 'Gold', contacts: 1, price: '₹2,999', basePrice: '₹2,542', gst: '₹457' },
-      { key: 'Diamond', contacts: 5, price: '₹5,999', basePrice: '₹5,084', gst: '₹915' },
+      { key: 'Gold', contacts: 1, price: '₹2,999' },
+      { key: 'Diamond', contacts: 5, price: '₹5,999' },
     ],
     stat_label: 'Consultations',
   },
@@ -128,7 +128,7 @@ export default function UpgradeModal({ feature = 'contact', message, onClose }: 
                     </span>
                   </div>
                   <span className="text-[10px] text-zinc-500 dark:text-zinc-450 pl-5 leading-none">
-                    Base: {plan.basePrice} + GST: {plan.gst}
+                    Service price · GST not charged
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
@@ -140,7 +140,7 @@ export default function UpgradeModal({ feature = 'contact', message, onClose }: 
                       {plan.price}
                     </span>
                     <span className="text-[8px] text-zinc-400 dark:text-zinc-500 font-light mt-0.5 leading-none">
-                      (incl. GST)
+                      (GST not charged)
                     </span>
                   </div>
                 </div>

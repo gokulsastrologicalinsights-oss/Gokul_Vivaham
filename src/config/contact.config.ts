@@ -3,7 +3,7 @@ export const contactConfig = {
     name: 'Gokul Vivaham | கோகுல் விவாஹம்',
     legalName: 'Gokul Vivaham',
     tamilName: 'கோகுல் விவாஹம்',
-    businessType: 'Matrimony website',
+    businessType: 'Sole proprietorship — matrimony services',
     gstRegistered: false,
     gstin: null,
     tagline: 'Where Matches Begin with Compatibility',

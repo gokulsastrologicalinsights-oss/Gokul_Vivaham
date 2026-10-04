@@ -317,19 +317,10 @@ export default function AdminSubscriptionsPage() {
                         <span className="font-bold">₹{p.amount.toLocaleString('en-IN')}</span>
                         {p.amount > 0 && (p.payment_type === 'subscription' || p.payment_type === 'contact_unlock' || p.payment_type === 'consultation') && (() => {
                           const amt = p.amount;
-                          let base = amt;
-                          let gst = 0;
-                          if (Math.abs(amt - 1499) < 2) { base = 1270; gst = 229; }
-                          else if (Math.abs(amt - 2999) < 2) { base = 2542; gst = 457; }
-                          else if (Math.abs(amt - 5999) < 2) { base = 5084; gst = 915; }
-                          else if (Math.abs(amt - 199) < 2) { base = 169; gst = 30; }
-                          else {
-                            base = Math.round(amt / 1.18);
-                            gst = amt - base;
-                          }
+                          
                           return (
                             <span className="text-[10px] text-muted/80 font-light mt-0.5 leading-none">
-                              Base: ₹{base.toLocaleString('en-IN')} | GST: ₹{gst.toLocaleString('en-IN')}
+                              Recorded service payment
                             </span>
                           );
                         })()}
@@ -444,19 +435,10 @@ export default function AdminSubscriptionsPage() {
                           <span className="font-bold">₹{s.plan_price.toLocaleString('en-IN')}</span>
                           {s.plan_price > 0 && (() => {
                             const amt = s.plan_price;
-                            let base = amt;
-                            let gst = 0;
-                            if (Math.abs(amt - 1499) < 2) { base = 1270; gst = 229; }
-                            else if (Math.abs(amt - 2999) < 2) { base = 2542; gst = 457; }
-                            else if (Math.abs(amt - 5999) < 2) { base = 5084; gst = 915; }
-                            else if (Math.abs(amt - 199) < 2) { base = 169; gst = 30; }
-                            else {
-                              base = Math.round(amt / 1.18);
-                              gst = amt - base;
-                            }
+                            
                             return (
                               <span className="text-[10px] text-muted/80 font-light mt-0.5 leading-none">
-                                Base: ₹{base.toLocaleString('en-IN')} | GST: ₹{gst.toLocaleString('en-IN')}
+                                Recorded service payment
                               </span>
                             );
                           })()}
@@ -679,5 +661,3 @@ export default function AdminSubscriptionsPage() {
     </div>
   );
 }
-
-

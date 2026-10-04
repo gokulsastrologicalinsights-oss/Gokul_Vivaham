@@ -486,10 +486,10 @@ export default function Subscription() {
                     {planDef.price > 0 && (
                       <div className="flex flex-col items-start leading-tight">
                         <span className="text-[9px] text-zinc-450 dark:text-zinc-500 font-semibold uppercase tracking-wider">
-                          (Inclusive of 18% GST)
+                          GST not charged
                         </span>
                         <span className="text-[9px] text-zinc-550 dark:text-zinc-400 font-light mt-0.5">
-                          Base Price: ₹{key === 'SILVER' ? '1,270' : key === 'GOLD' ? '2,542' : '5,084'} | GST: ₹{key === 'SILVER' ? '229' : key === 'GOLD' ? '457' : '915'}
+                          Service price shown above · GST not charged
                         </span>
                       </div>
                     )}
@@ -561,7 +561,7 @@ export default function Subscription() {
             Billing Profile Setup
           </h2>
           <p className="text-[11px] text-zinc-500 dark:text-zinc-405 font-light leading-normal">
-            Configure your official billing name, address, and GSTIN. This information is automatically populated on your tax invoices and receipts.
+            Configure your official billing name, address, and GSTIN. This information is used for your payment receipts. GST is not charged by this business.
           </p>
 
           <div className="flex flex-col gap-3 mt-1 text-xs">
@@ -833,7 +833,7 @@ export default function Subscription() {
                       <th className="py-2 font-bold uppercase text-[9px] tracking-wider">Description</th>
                       <th className="py-2 text-right font-bold uppercase text-[9px] tracking-wider">Base Rate</th>
                       <th className="py-2 text-right font-bold uppercase text-[9px] tracking-wider">Qty</th>
-                      <th className="py-2 text-right font-bold uppercase text-[9px] tracking-wider">Taxable Value</th>
+                      <th className="py-2 text-right font-bold uppercase text-[9px] tracking-wider">Service Amount</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -853,11 +853,11 @@ export default function Subscription() {
               {/* Taxation breakdown & Total */}
               <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mt-4">
                 <div className="text-[10px] font-light text-zinc-500 leading-normal max-w-sm">
-                  This receipt shows the recorded payment breakdown. Official tax invoice details are pending business verification.
+                  Payment receipt. Gokul Vivaham is unregistered for GST and does not charge GST. This is not a GST tax invoice.
                 </div>
                 <div className="w-full sm:w-64 flex flex-col gap-2 text-xs">
                   <div className="flex justify-between text-zinc-550">
-                    <span>Taxable Amount:</span>
+                    <span>Service Amount:</span>
                     <span className="font-mono">₹{Number(selectedTx.amount).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between text-zinc-550 border-b border-zinc-100 dark:border-zinc-900 pb-2">

@@ -4,7 +4,7 @@
  */
 
 export const CURRENCY = 'INR';
-export const GST_RATE_PERCENTAGE = 18;
+export const GST_RATE_PERCENTAGE = 0;
 
 export const FEATURED_PROFILE_PRICES = {
   DAYS_15: 799,
@@ -13,7 +13,7 @@ export const FEATURED_PROFILE_PRICES = {
 
 export const CONSULTATION_ORIGINAL_PRICE = 1499;
 export const CONSULTATION_PLATFORM_DISCOUNT = 300;
-export const CONSULTATION_PRICE = 1199; // Base discounted price (excluding GST)
+export const CONSULTATION_PRICE = 1199; // Final discounted service price; GST is not charged
 
 export interface SubscriptionPlanDef {
   id: string;

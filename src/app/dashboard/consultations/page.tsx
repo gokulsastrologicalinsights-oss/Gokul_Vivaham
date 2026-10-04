@@ -110,8 +110,7 @@ export default function UserConsultations() {
 
   const couponDiscount = getCouponDiscount();
   const baseTaxableAmount = Number((standardDiscountedPrice - couponDiscount).toFixed(2));
-  const gstAdjustment = couponDiscount === 0 ? 1.00 : 0.00;
-  const gstAmount = Number((baseTaxableAmount * 0.18 + gstAdjustment).toFixed(2));
+  const gstAmount = 0; // No GST while the business is unregistered.
   const finalFee = Number((baseTaxableAmount + gstAmount).toFixed(2));
 
   // Date selection logic (Generate next 14 days)
@@ -425,7 +424,7 @@ Thank you.`;
             </div>
 
             <div className="flex justify-between text-zinc-555 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-850 pb-2">
-              <span>GST (18% calculated separately):</span>
+              <span>GST (not charged):</span>
               <span className="font-mono">₹{bookingSuccess.gstAmount}</span>
             </div>
 
@@ -819,7 +818,7 @@ Thank you.`;
                     </div>
 
                     <div className="flex justify-between text-zinc-550 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-850 pb-2">
-                      <span>GST (18% calculated separately):</span>
+                      <span>GST (not charged):</span>
                       <span className="font-mono">₹{gstAmount.toLocaleString('en-IN')}</span>
                     </div>
 
@@ -989,13 +988,7 @@ Thank you.`;
                           </a> : <span className="text-xs">Meeting link will appear after scheduling.</span>}
                           {booking.scheduled_at && <span className="text-xs">{new Date(booking.scheduled_at).toLocaleString()} · {booking.duration_minutes || 30} minutes</span>}
                           
-                          <button
-                            onClick={() => handleCancelBooking(booking.id)}
-                            disabled={cancellingId === booking.id}
-                            className="px-4 py-2 border border-red-500/20 hover:bg-red-500/5 text-red-655 dark:text-red-400 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:opacity-50 focus:outline-none"
-                          >
-                            {cancellingId === booking.id ? 'Cancelling...' : 'Cancel'}
-                          </button>
+                          <a href="https://wa.me/919444559071" className="text-xs underline">Contact office to change slot</a>
                         </>
                       )}
 
@@ -1008,13 +1001,7 @@ Thank you.`;
                             Awaiting Gateway Capture
                           </button>
                           
-                          <button
-                            onClick={() => handleCancelBooking(booking.id)}
-                            disabled={cancellingId === booking.id}
-                            className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/20 text-zinc-650 dark:text-zinc-450 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:opacity-50 focus:outline-none"
-                          >
-                            Discard
-                          </button>
+                          <a href="https://wa.me/919444559071" className="text-xs underline">Contact office to change slot</a>
                         </>
                       )}
 
