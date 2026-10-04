@@ -6,7 +6,7 @@ export const authClient = {
       email,
       password,
       options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin + '/dashboard' : undefined,
+        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
         data: {
           full_name: fullName,
           role: 'user',
