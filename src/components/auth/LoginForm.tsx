@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { authService } from '@/services/auth.service';
@@ -20,6 +20,33 @@ export default function LoginForm() {
   const [successMessage, setSuccessMessage] = useState('');
   const [factorId, setFactorId] = useState('');
   const [authenticatorCode, setAuthenticatorCode] = useState('');
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (!resendCooldown) return;
+    const timer = setTimeout(() => setResendCooldown(value => Math.max(0, value - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  const resendConfirmation = async () => {
+    if (!unconfirmedEmail || resending || resendCooldown) return;
+    setResending(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: unconfirmedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/login` } });
+      if (error) throw error;
+      setSuccessMessage('Confirmation email requested. Check your inbox and spam folder, confirm your email, then sign in.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      setErrorMessage(/rate|too many/i.test(message)
+        ? 'Too many email requests. Please wait before requesting another confirmation email.'
+        : 'Unable to resend the confirmation email. Please try again later or contact support.');
+    } finally { setResending(false); setResendCooldown(60); }
+  };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +62,10 @@ export default function LoginForm() {
       const { data, error } = await authService.signInWithPassword(email, password);
 
       if (error) {
-        setErrorMessage(error.message);
+        if ((error as { code?: string }).code === 'email_not_confirmed' || /email not confirmed/i.test(error.message)) {
+          setUnconfirmedEmail(email.trim());
+          setErrorMessage('Please confirm your email before signing in. Request a new confirmation email below.');
+        } else setErrorMessage(error.message);
       } else {
         if (!data?.session) throw new Error('Sign-in did not create a session.');
         const access = await syncServerSession(data.session.access_token);
@@ -106,6 +136,13 @@ export default function LoginForm() {
         </div>
       )}
 
+      {unconfirmedEmail && (
+        <button type="button" onClick={resendConfirmation}
+          disabled={resending || loading || resendCooldown > 0}
+          className="mb-6 w-full rounded-xl border border-maroon-500 px-4 py-3 text-sm font-semibold text-maroon-600 dark:text-gold-400 disabled:opacity-50">
+          {resending ? 'Sending confirmation email…' : resendCooldown ? `Resend available in ${resendCooldown}s` : 'Resend confirmation email'}
+        </button>
+      )}
       {/* EMAIL / PASSWORD LOGIN FORM */}
       {factorId ? (
         <form onSubmit={handleAuthenticatorLogin} className="flex flex-col gap-5">
@@ -127,7 +164,7 @@ export default function LoginForm() {
             <input
               id="login-email" type="email" autoComplete="email" required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setUnconfirmedEmail(''); setErrorMessage(''); setSuccessMessage(''); }}
               placeholder="name@example.com"
               className="block w-full pl-11 pr-4 h-11 bg-white/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-150 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-maroon-500 focus:border-maroon-500 transition-all text-sm"
             />
