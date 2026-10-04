@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { uploadService } from '@/services/upload.service';
+import { galleryService } from '@/services/gallery.service';
 import { useProfileStore } from '@/stores/profileStore';
 import RasiStarDropdowns from '@/components/ui/input/RasiStarDropdowns';
 import ReligionCommunityDropdowns from '@/components/ui/input/ReligionCommunityDropdowns';
@@ -54,6 +55,8 @@ export default function Profile() {
   });
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
@@ -291,45 +294,30 @@ export default function Profile() {
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && userId) {
-      const file = e.target.files[0];
-      try {
-        const { url, error } = await uploadService.uploadFile(file, 'photos');
-        if (error) {
-          alert('Upload failed: ' + error.message);
-          return;
-        }
-
-        if (url) {
-          setProfilePhoto(url);
-          
-          // Delete existing profile photo reference
-          await supabase
-            .from('gallery_images')
-            .delete()
-            .eq('user_id', userId)
-            .eq('is_profile_picture', true);
-
-          // Insert new profile photo reference
-          const { error: galleryErr } = await supabase
-            .from('gallery_images')
-            .insert({
-              user_id: userId,
-              image_url: url,
-              is_profile_picture: true,
-              is_private: false
-            });
-
-          if (galleryErr) {
-            console.error('Gallery insert error:', galleryErr);
-          } else {
-            alert('Photo uploaded successfully! Awaiting Admin review.');
-          }
-        }
-      } catch (err: any) {
-        alert('Error during upload: ' + err.message);
-      }
-    }
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file || uploadingPhoto) return;
+    setPhotoError('');
+    setSuccess('');
+    if (!userId) { setPhotoError('Please sign in again before uploading.'); input.value = ''; return; }
+    setUploadingPhoto(true);
+    let uploadedPath: string | null = null;
+    try {
+      const gallery = await galleryService.getGalleryImages(userId);
+      if (gallery.error) throw gallery.error;
+      if (gallery.data.length >= 3) throw new Error('Your gallery has three photos. Remove one in My Gallery before uploading another.');
+      const {url,error} = await uploadService.uploadFile(file,'photos');
+      if (error || !url) throw error || new Error('Photo upload failed.');
+      uploadedPath = url;
+      const attached = await galleryService.uploadGalleryImage(userId,url,true);
+      if (attached.error || !attached.data) throw attached.error || new Error('Photo could not be saved.');
+      uploadedPath = null;
+      setProfilePhoto(attached.data.image_url);
+      setSuccess('Profile photo uploaded successfully. Awaiting admin review.');
+    } catch (error) {
+      if (uploadedPath) await supabase.storage.from('photos').remove([uploadedPath]);
+      setPhotoError(error instanceof Error ? error.message : 'Photo upload failed. Please retry.');
+    } finally { setUploadingPhoto(false); input.value = ''; }
   };
 
   return (
@@ -740,6 +728,8 @@ export default function Profile() {
                   type="file" 
                   accept="image/*" 
                   onChange={handlePhotoUpload}
+                  disabled={uploadingPhoto}
+                  aria-label="Upload primary profile photo"
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
                 
@@ -756,12 +746,14 @@ export default function Profile() {
                 )}
                 
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Upload primary profile photo</span>
+                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{uploadingPhoto ? 'Uploading photo…' : 'Upload primary profile photo'}</span>
                   <span className="text-xs text-zinc-450 dark:text-zinc-500">Requires Admin review to be visible to other members.</span>
                 </div>
               </div>
 
-              {/* Mock upload list */}
+              {photoError && <p role="alert" className="text-sm text-red-600">{photoError}</p>}
+              <p className="text-xs">JPEG, PNG or WebP · Maximum 5MB · Up to three photos. Manage existing photos in <a href="/dashboard/gallery" className="underline">My Gallery</a>.</p>
+              {/* Additional gallery slots */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">
                   Photo Slot 2
@@ -770,7 +762,7 @@ export default function Profile() {
                   Photo Slot 3
                 </div>
                 <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">
-                  Photo Slot 4
+                  Manage in My Gallery
                 </div>
               </div>
             </div>
