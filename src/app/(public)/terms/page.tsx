@@ -18,7 +18,7 @@ export default function Page(){return <PolicyPage title="Terms & Conditions" sec
   },
   {
     "title": "Payments and bookings",
-    "text": "Prices are in Indian rupees. We are currently unregistered for GST and do not charge GST. Payment processing is provided by Razorpay; confirm the amount before paying. Activated memberships are non-refundable under our standard policy. Duplicate-payment refunds are issued after verification within 5–7 working days. Deducted payments awaiting activation are verified for plan activation. Consultation bookings cannot be cancelled or refunded under our standard policy; request slot changes through the office or WhatsApp. The Refund & Cancellation Policy explains exceptions and applicable legal rights."
+    "text": "Prices are in Indian rupees. Payment processing is provided by Razorpay; confirm the amount before paying. Activated memberships are non-refundable under our standard policy. Duplicate-payment refunds are issued after verification within 5–7 working days. Deducted payments awaiting activation are verified for plan activation. Consultation bookings cannot be cancelled or refunded under our standard policy; request slot changes through the office or WhatsApp. The Refund & Cancellation Policy explains exceptions and applicable legal rights."
   },
   {
     "title": "Matchmaking and astrology",

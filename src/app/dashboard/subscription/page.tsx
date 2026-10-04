@@ -485,12 +485,8 @@ export default function Subscription() {
                     </div>
                     {planDef.price > 0 && (
                       <div className="flex flex-col items-start leading-tight">
-                        <span className="text-[9px] text-zinc-450 dark:text-zinc-500 font-semibold uppercase tracking-wider">
-                          GST not charged
-                        </span>
-                        <span className="text-[9px] text-zinc-550 dark:text-zinc-400 font-light mt-0.5">
-                          Service price shown above · GST not charged
-                        </span>
+                        
+                        
                       </div>
                     )}
                   </div>
@@ -561,7 +557,7 @@ export default function Subscription() {
             Billing Profile Setup
           </h2>
           <p className="text-[11px] text-zinc-500 dark:text-zinc-405 font-light leading-normal">
-            Configure your official billing name, address, and GSTIN. This information is used for your payment receipts. GST is not charged by this business.
+            Configure your billing name and address for payment receipts.
           </p>
 
           <div className="flex flex-col gap-3 mt-1 text-xs">
@@ -621,16 +617,7 @@ export default function Subscription() {
                   className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent focus:outline-none dark:text-zinc-100 font-mono"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider text-[9px]">GSTIN (Optional)</label>
-                <input
-                  type="text"
-                  value={billingGstin}
-                  onChange={(e) => setBillingGstin(e.target.value)}
-                  placeholder="e.g. 33AAAAA1111A1Z0"
-                  className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent focus:outline-none dark:text-zinc-100 font-mono uppercase"
-                />
-              </div>
+              
             </div>
 
             <button
@@ -821,7 +808,7 @@ export default function Subscription() {
                   ) : (
                     <p className="font-light text-zinc-450 dark:text-zinc-550 italic">Address details not set in billing profile.</p>
                   )}
-                  {selectedTx.billing_snapshot?.buyer?.gstin && <p className="font-mono text-[10px] mt-1 text-zinc-850 dark:text-zinc-150">GSTIN: {selectedTx.billing_snapshot.buyer.gstin}</p>}
+
                 </div>
               </div>
 
@@ -853,7 +840,7 @@ export default function Subscription() {
               {/* Taxation breakdown & Total */}
               <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mt-4">
                 <div className="text-[10px] font-light text-zinc-500 leading-normal max-w-sm">
-                  Payment receipt. Gokul Vivaham is unregistered for GST and does not charge GST. This is not a GST tax invoice.
+                  Payment receipt issued by Gokul Vivaham.
                 </div>
                 <div className="w-full sm:w-64 flex flex-col gap-2 text-xs">
                   <div className="flex justify-between text-zinc-550">

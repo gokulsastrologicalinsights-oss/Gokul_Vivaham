@@ -614,7 +614,7 @@ function MatchesContent() {
                               {checkoutLoading ? 'Processing...' : 'Unlock Contact (₹199)'}
                             </button>
                             <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-none mt-1">
-                              Service price: ₹199 · GST not charged
+                              Service price: ₹199
                             </span>
                           </div>
                         </div>
@@ -652,7 +652,7 @@ function MatchesContent() {
                             {checkoutLoading ? 'Processing...' : 'Unlock Directly (₹199)'}
                           </button>
                           <span className="text-[9px] text-zinc-500 dark:text-zinc-450 leading-none mt-1">
-                            Service price: ₹199 · GST not charged
+                            Service price: ₹199
                           </span>
                         </div>
                       </div>

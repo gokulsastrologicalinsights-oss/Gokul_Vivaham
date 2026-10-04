@@ -127,9 +127,7 @@ export default function UpgradeModal({ feature = 'contact', message, onClose }: 
                       {plan.key} Plan
                     </span>
                   </div>
-                  <span className="text-[10px] text-zinc-500 dark:text-zinc-450 pl-5 leading-none">
-                    Service price · GST not charged
-                  </span>
+                  
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-zinc-500 dark:text-zinc-400">
@@ -139,9 +137,7 @@ export default function UpgradeModal({ feature = 'contact', message, onClose }: 
                     <span className="font-bold text-maroon-600 dark:text-gold-400 leading-none">
                       {plan.price}
                     </span>
-                    <span className="text-[8px] text-zinc-400 dark:text-zinc-500 font-light mt-0.5 leading-none">
-                      (GST not charged)
-                    </span>
+                    
                   </div>
                 </div>
               </div>

@@ -419,14 +419,11 @@ Thank you.`;
             )}
 
             <div className="flex justify-between text-zinc-550 dark:text-zinc-400">
-              <span>Net Taxable Base Value:</span>
+              <span>Price after discount:</span>
               <span className="font-mono">₹{bookingSuccess.baseTaxableAmount}</span>
             </div>
 
-            <div className="flex justify-between text-zinc-555 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-850 pb-2">
-              <span>GST (not charged):</span>
-              <span className="font-mono">₹{bookingSuccess.gstAmount}</span>
-            </div>
+            
 
             <div className="flex justify-between font-bold text-zinc-900 dark:text-white pt-1">
               <span>Final Paid Amount:</span>
@@ -813,14 +810,11 @@ Thank you.`;
                     )}
 
                     <div className="flex justify-between text-zinc-550 dark:text-zinc-400">
-                      <span>Net Taxable Base:</span>
+                      <span>Price after discount:</span>
                       <span className="font-mono">₹{baseTaxableAmount.toLocaleString('en-IN')}</span>
                     </div>
 
-                    <div className="flex justify-between text-zinc-550 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-850 pb-2">
-                      <span>GST (not charged):</span>
-                      <span className="font-mono">₹{gstAmount.toLocaleString('en-IN')}</span>
-                    </div>
+                    
 
                     <div className="flex justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 pt-1">
                       <span>Final Payable Amount:</span>

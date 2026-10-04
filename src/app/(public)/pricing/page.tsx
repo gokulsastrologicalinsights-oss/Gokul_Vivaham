@@ -195,12 +195,8 @@ export default function Pricing() {
                   </div>
                   {planDef.price > 0 && (
                     <div className="flex flex-col items-start leading-tight">
-                      <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold uppercase tracking-wider">
-                        GST not charged
-                      </span>
-                      <span className="text-[10px] text-zinc-550 dark:text-zinc-400 font-light mt-0.5">
-                        Service price shown above · GST not charged
-                      </span>
+                      
+                      
                     </div>
                   )}
                 </div>

@@ -91,12 +91,8 @@ export default function Home() {
                   <span className="text-3xl font-serif font-extrabold text-zinc-900 dark:text-zinc-100">₹1,499</span>
                   <span className="text-xs text-zinc-500 pl-1">/ 30 days</span>
                 </div>
-                <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold leading-none">
-                  GST not charged
-                </span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-light mt-1">
-                  Service price shown above · GST not charged
-                </span>
+                
+                
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 font-light">Filter matches by taste and access contact phone numbers.</p>
               
@@ -145,12 +141,8 @@ export default function Home() {
                   <span className="text-3xl font-serif font-extrabold text-zinc-900 dark:text-zinc-100">₹2,999</span>
                   <span className="text-xs text-zinc-500 pl-1">/ 3 months</span>
                 </div>
-                <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold leading-none">
-                  GST not charged
-                </span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-light mt-1">
-                  Service price shown above · GST not charged
-                </span>
+                
+                
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 font-light">Best value for matching and astrology consultation support.</p>
               
@@ -197,12 +189,8 @@ export default function Home() {
                   <span className="text-3xl font-serif font-extrabold text-zinc-900 dark:text-zinc-100">₹5,999</span>
                   <span className="text-xs text-zinc-500 pl-1">/ 6 months</span>
                 </div>
-                <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold leading-none">
-                  GST not charged
-                </span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-light mt-1">
-                  Service price shown above · GST not charged
-                </span>
+                
+                
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 font-light">Complete astrological review and maximum contacts.</p>
               

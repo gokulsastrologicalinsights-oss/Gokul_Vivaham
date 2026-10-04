@@ -21,7 +21,7 @@ export default function Page(){return <PolicyPage title="Refund & Cancellation P
     "text": "These standard policies do not exclude refunds, remedies or other rights required by applicable law, including where a service is not provided or is deficient. If we cannot provide a booked service, contact support to resolve the issue; any legally required remedy remains available."
   },
   {
-    "title": "Prices and GST",
-    "text": "Gokul Vivaham is currently not registered for GST and does not collect GST. The amount shown at checkout is the service price payable after any valid discount. We issue payment receipts, not GST tax invoices."
+    "title": "Prices and receipts",
+    "text": "The amount shown at checkout is the service price payable after any valid discount. We issue payment receipts."
   }
 ]} />;}
