@@ -4,32 +4,10 @@ import { useSuccessStories } from '@/hooks/useSuccessStories';
 import { Heart, Loader2 } from 'lucide-react';
 
 const fallbackStories = [
-  {
-    id: 'fallback-1',
-    name: 'Arvind & Soundarya',
-    date: 'Married Nov 2025',
-    compatibility: 'Simham Rasi & Simham Rasi (92% Score)',
-    text: '"We found each other within two weeks of registering. The Rasi matching tool gave us a confidence boost, and once our families met, everything clicked seamlessly. Highly recommend Gokul Vivaham!"',
-    image_url: null
-  },
-  {
-    id: 'fallback-2',
-    name: 'Sathish & Priya',
-    date: 'Married Feb 2026',
-    compatibility: 'Kanni Rasi & Rishabham Rasi (88% Score)',
-    text: '"Education and work location compatibility was extremely important for both of us. The search filters on Gokul Vivaham allowed us to find matching profiles instantly. Thank you so much!"',
-    image_url: null
-  },
-  {
-    id: 'fallback-3',
-    name: 'Karthik & Deepa',
-    date: 'Married Apr 2026',
-    compatibility: 'Viruchigam Rasi & Kadagam Rasi (95% Score)',
-    text: '"Finding someone who matches your values is rare. Gokul Vivaham\'s detailed personal, family, and horoscope matching was accurate. We are happily married and credit this premium platform."',
-    image_url: null
-  }
+ {id:'fallback-1',name:'Traditional wedding celebration',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'An illustration of a joyful Tamil wedding. This is not a customer testimonial or a marriage arranged through our platform.',image_url:'/couple-illustrations/couple-1.png'},
+ {id:'fallback-2',name:'A new chapter together',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'Wedding inspiration featuring an invented couple. Approved stories shared by real members will appear here when available.',image_url:'/couple-illustrations/couple-2.png'},
+ {id:'fallback-3',name:'Celebrating family traditions',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'A fictional wedding portrait celebrating traditional attire and family values. It does not represent a verified success story.',image_url:'/couple-illustrations/couple-3.png'}
 ];
-
 export default function SuccessStories() {
   const { data: dbStories = [], isLoading: loading, error } = useSuccessStories();
 
@@ -56,7 +34,7 @@ export default function SuccessStories() {
           </h2>
           <div className="w-16 h-1 luxury-gradient rounded-full" />
           <p className="text-sm text-zinc-655 dark:text-zinc-400 max-w-xl font-light">
-            Couples who discovered their perfect compatibility through our platform.
+            {dbStories.length ? 'Approved member stories, alongside clearly labelled wedding illustrations.' : 'Wedding illustrations. Real member stories will appear here after approval.'}
           </p>
         </div>
 
@@ -71,7 +49,7 @@ export default function SuccessStories() {
               <div key={i} className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-md border border-sandal-200 dark:border-zinc-800 text-left flex flex-col gap-4 hover:scale-[1.01] hover:shadow-lg transition-all duration-300 animate-fade-in animate-in duration-200">
                 <div className="w-full h-48 rounded-xl bg-gradient-to-tr from-rose-100 to-amber-100 dark:from-zinc-850 dark:to-zinc-800 flex items-center justify-center relative overflow-hidden border border-zinc-100 dark:border-zinc-800/80">
                   {story.image_url ? (
-                    <img src={story.image_url} alt={story.name} className="w-full h-full object-cover" />
+                    <img src={story.image_url} alt={story.id.startsWith('fallback-') ? `AI-generated fictional wedding couple: ${story.name}` : story.name} loading="lazy" className="w-full h-full object-cover object-center" />
                   ) : (
                     <Heart className="h-16 w-16 text-maroon-500/30 animate-pulse" />
                   )}
@@ -97,3 +75,4 @@ export default function SuccessStories() {
     </section>
   );
 }
+
