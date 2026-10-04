@@ -3,7 +3,7 @@ import {z} from 'zod';
 import {authLib} from '@/lib/auth';
 import {supabaseAdmin} from '@/lib/supabase/server';
 const text=z.string().trim().min(1).max(150);
-const input=z.object({id:z.string().regex(/^sample-[mf]\d{2}$/),name:text,age:z.number().int().min(21).max(80),city:text,education:text,occupation:text,about:z.string().trim().min(1).max(1500),published:z.boolean()}).strict();
+const input=z.object({id:z.string().regex(/^sample-[mf]\d{2}$/),name:text,age:z.number().int().min(21).max(80),city:text,education:text,occupation:text,about:z.string().trim().min(1).max(1500),published:z.boolean(),portrait_id:z.string().regex(/^sample-[mf]0[1-3]$/).optional()}).strict();
 export async function GET(){
  const access=await authLib.getServerAccess();
  if(!access?.isAdmin)return NextResponse.json({error:'Administrator verification required.'},{status:403});
@@ -22,3 +22,5 @@ export async function PATCH(request:Request){
  if(error)return NextResponse.json({error:'Sample could not be saved.'},{status:409});
  return NextResponse.json({profile:data},{headers:{'Cache-Control':'no-store'}});
 }
+
+
