@@ -17,8 +17,8 @@ export const contactConfig = {
     link: 'https://wa.me/919444559071',
   },
   email: {
-    support: 'gokulsastrologicalinsights@gmail.com',
-    link: 'mailto:gokulsastrologicalinsights@gmail.com',
+    support: 'vivahamgokul@gmail.com',
+    link: 'mailto:vivahamgokul@gmail.com',
   },
   address: {
     display: '165, Sakreeshwari Nagar, 2nd Street, Thiruverkadu, Chennai, Tamil Nadu - 600077',
