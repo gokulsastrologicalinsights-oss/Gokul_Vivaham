@@ -4,7 +4,7 @@ import { resolveAccess } from '@/lib/auth/access';
 export async function POST(request: Request) {
   if(request.headers.get('origin') !== new URL(request.url).origin) return NextResponse.json({error:'Forbidden'},{status:403});
   const body = await request.json().catch(() => null);
-  if(typeof body?.username !== 'string' || typeof body?.password !== 'string' || body.password.length>200) return NextResponse.json({error:'Enter your admin ID and password.'},{status:400});
+  if(typeof body?.username !== 'string' || typeof body?.password !== 'string' || !body.username.trim() || body.username.length>254 || !body.password || body.password.length>200) return NextResponse.json({error:'Enter your admin ID and password.'},{status:400});
   const email = body.username.trim() === process.env.ADMIN_LOGIN_ID ? process.env.ADMIN_LOGIN_EMAIL : body.username.trim();
   if(!email) return NextResponse.json({error:'Invalid admin credentials.'},{status:401});
   const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,{auth:{persistSession:false,autoRefreshToken:false}});

@@ -17,7 +17,7 @@ export async function resolveAccess(token: string | undefined): Promise<Access |
     const [accountResult, profileResult, adminResult, assuranceResult] = await Promise.all([
       client.from('users').select('id,status,deleted_at').eq('auth_user_id', user.id).maybeSingle(),
       client.from('profiles').select('is_suspended,deleted_at').eq('user_id', user.id).maybeSingle(),
-      client.from('admin_users').select('role,is_super_admin,password_login_allowed').eq('auth_user_id', user.id).maybeSingle(),
+      client.from('admin_users').select('role,is_super_admin').eq('auth_user_id', user.id).maybeSingle(),
       client.auth.mfa.getAuthenticatorAssuranceLevel(token),
     ]);
     const account = accountResult.data;
@@ -25,7 +25,7 @@ export async function resolveAccess(token: string | undefined): Promise<Access |
         !account || account.status !== 'active' || account.deleted_at ||
         profileResult.data?.is_suspended || profileResult.data?.deleted_at) return null;
     const membership = adminResult.data;
-    const elevated = assuranceResult.data.currentLevel === 'aal2' || Boolean(membership?.password_login_allowed && assuranceResult.data.nextLevel !== 'aal2');
+    const elevated = assuranceResult.data.currentLevel === 'aal2';
     const mfaRequired = membership ? !elevated : assuranceResult.data.nextLevel === 'aal2' && !elevated;
     if (membership) {
       const role = membership.is_super_admin ? 'super_admin' : membership.role === 'moderator' ? 'moderator' : 'admin';

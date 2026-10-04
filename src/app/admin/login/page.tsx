@@ -48,6 +48,7 @@ export default function AdminLogin() {
       const login = await response.json();
       if (!response.ok) throw new Error(login.error || 'Sign-in failed.');
       const { data, error } = await supabase.auth.setSession(login);
+      setPassword('');
       if (error || !data.session || !data.user) throw error || new Error('Sign-in failed.');
       const { data: member, error: memberError } = await supabase.from('admin_users')
         .select('id').eq('auth_user_id', data.user.id).maybeSingle();
@@ -97,6 +98,8 @@ export default function AdminLogin() {
       if (error) throw error;
       const access = await syncServerSession(data.access_token);
       if (!access.isAdmin) throw new Error('Administrator access could not be verified.');
+      setEnrollmentQr('');
+      setTwoFactorCode('');
       setSuccessMessage('Authenticator verified.');
       router.push('/admin/dashboard');
       router.refresh();
