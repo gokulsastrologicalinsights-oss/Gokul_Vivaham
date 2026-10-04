@@ -4,9 +4,9 @@ import { useSuccessStories } from '@/hooks/useSuccessStories';
 import { Heart, Loader2 } from 'lucide-react';
 
 const fallbackStories = [
- {id:'fallback-1',name:'Traditional wedding celebration',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'An illustration of a joyful Tamil wedding. This is not a customer testimonial or a marriage arranged through our platform.',image_url:'/couple-illustrations/couple-1.png'},
- {id:'fallback-2',name:'A new chapter together',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'Wedding inspiration featuring an invented couple. Approved stories shared by real members will appear here when available.',image_url:'/couple-illustrations/couple-2.png'},
- {id:'fallback-3',name:'Celebrating family traditions',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'A fictional wedding portrait celebrating traditional attire and family values. It does not represent a verified success story.',image_url:'/couple-illustrations/couple-3.png'}
+ {id:'fallback-1',name:'Traditional wedding celebration',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'An illustration of a joyful Tamil wedding. This is not a customer testimonial or a marriage arranged through our platform.',image_url:'/couple-illustrations/couple-1-v2.png'},
+ {id:'fallback-2',name:'A new chapter together',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'Wedding inspiration featuring an invented couple. Approved stories shared by real members will appear here when available.',image_url:'/couple-illustrations/couple-2-v2.png'},
+ {id:'fallback-3',name:'Celebrating family traditions',date:'AI wedding illustration',compatibility:'Fictional couple · illustrative example',text:'A fictional wedding portrait celebrating traditional attire and family values. It does not represent a verified success story.',image_url:'/couple-illustrations/couple-3-v2.png'}
 ];
 export default function SuccessStories() {
   const { data: dbStories = [], isLoading: loading, error } = useSuccessStories();
@@ -75,4 +75,5 @@ export default function SuccessStories() {
     </section>
   );
 }
+
 
