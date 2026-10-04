@@ -47,9 +47,10 @@ export default function Navbar() {
   }
 
   const navLinks = [
-    { name: 'Home', href: '/' },
+    ...(!user ? [{ name: 'Home', href: '/' }] : []),
     { name: 'Matches', href: '/dashboard/matches' },
     { name: 'Preferences', href: '/dashboard/preferences' },
+    ...(user ? [{ name: 'Chat', href: '/dashboard/chat' }] : []),
     { name: 'Support', href: '/contact' },
   ];
 
@@ -257,3 +258,4 @@ export default function Navbar() {
     </nav>
   );
 }
+
