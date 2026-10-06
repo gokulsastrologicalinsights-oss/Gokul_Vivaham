@@ -130,6 +130,12 @@ export async function POST(req: Request) {
     const { order: orderData, error: orderErr } = await paymentService.createOrder(gatewayChargePrice, receipt);
 
     if (orderErr || !orderData) {
+      if (orderErr?.statusCode === 401) {
+        return NextResponse.json({
+          error: 'Payment gateway authentication failed. Please contact support.',
+          code: 'PAYMENT_GATEWAY_AUTH_FAILED',
+        }, { status: 401 });
+      }
       return NextResponse.json({ error: 'Failed to create order on payment gateway' }, { status: 500 });
     }
 
@@ -180,6 +186,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       orderId: orderData.id,
+      order_id: orderData.id,
       amount: rzpAmountPaise,
       currency: 'INR',
       keyId: razorpayConfig.keyId,
