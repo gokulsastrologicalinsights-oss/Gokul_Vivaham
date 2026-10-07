@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Search, Users, Eye, Pencil, Trash2, RotateCcw, X } from 'lucide-react';
 import { PROFILE_FIELDS, ACCOUNT_FIELDS, NUMBER_FIELDS, BOOLEAN_FIELDS } from '@/lib/admin/member-fields';
 
@@ -73,7 +74,7 @@ export default function AdminUsersPage() {
     return <div key={key}><label htmlFor={id} className="block text-xs text-muted mb-1">{label(key)}</label>{BOOLEAN_FIELDS.has(key)?<input id={id} type="checkbox" checked={Boolean(source[key])} onChange={e=>setValue({...source,[key]:e.target.checked})}/>:choices[key]?<select id={id} className={inputClass} value={String(source[key]||choices[key][0])} onChange={e=>setValue({...source,[key]:e.target.value})}>{choices[key].map(v=><option key={v}>{v}</option>)}</select>:['about_me','partner_expectations','siblings'].includes(key)?<textarea id={id} className={inputClass} value={String(source[key]??'')} onChange={e=>setValue({...source,[key]:e.target.value})}/>:<input id={id} className={inputClass} type={NUMBER_FIELDS.has(key)?'number':key==='date_of_birth'?'date':key==='email'?'email':'text'} min={NUMBER_FIELDS.has(key)?0:undefined} value={String(source[key]??'')} onChange={e=>setValue({...source,[key]:e.target.value})}/>}</div>;
   }
   return <div className="p-5 md:p-8 space-y-6 max-w-7xl mx-auto">
-    <div><h1 className="text-2xl font-serif font-bold flex items-center gap-2"><Users className="text-primary"/>Member administration</h1><p className="text-sm text-muted mt-2">View complete member records, edit details, and manage account access.</p></div>
+    <div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-2xl font-serif font-bold flex items-center gap-2"><Users className="text-primary"/>Profile Management</h1><p className="text-sm text-muted mt-2">View complete member records, edit details, delete or restore accounts.</p></div><Link href="/admin/users/new" className="rounded-xl bg-primary text-primary-foreground px-5 py-3 font-semibold">Create profile</Link></div>
     {error&&<p role="alert" className="border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 p-3 rounded-xl">{error}</p>}
     {notice&&<p role="status" className="border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 p-3 rounded-xl">{notice}</p>}
     <div className="flex flex-wrap items-center gap-4"><div className="relative flex-1 min-w-64"><Search className="absolute left-3 top-3 h-4 w-4 text-muted"/><input aria-label="Search members" className={inputClass+' pl-9'} placeholder="Search name, profile ID, email or phone" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}}/></div><label className="text-sm flex gap-2 items-center"><input type="checkbox" checked={includeDeleted} onChange={e=>{setIncludeDeleted(e.target.checked);setPage(1);}}/>Include deleted accounts</label></div>

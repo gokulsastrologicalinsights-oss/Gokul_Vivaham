@@ -56,7 +56,7 @@ export default function AdminLayout({
     { name: 'Subscriptions & Billing', href: '/admin/subscriptions', icon: CreditCard, desc: 'Payments & Subscriptions' },
     { name: 'Consultations', href: '/admin/consultations', icon: Calendar, desc: 'Astrologer Bookings' },
     { name: 'Success Stories', href: '/admin/success-stories', icon: Heart, desc: 'Moderate User Stories' },
-    { name: 'User Management', href: '/admin/users', icon: Users, desc: 'Profile Registry' },
+    { name: 'Profile Management', href: '/admin/users', icon: Users, desc: 'Create, view, edit and delete' },
     { name: 'Sample Profiles', href: '/admin/samples', icon: Users, desc: 'Fictional showcase examples' },
     { name: 'Religion & Caste', href: '/admin/religion-community', icon: Database, desc: 'Manage communities & mapping' },
     { name: 'Member Announcements', href: '/admin/notifications', icon: Bell, desc: 'In-app announcements' },
@@ -99,7 +99,7 @@ export default function AdminLayout({
         {/* Navigation Items */}
         <nav className="flex-1 py-6 px-3 flex flex-col gap-1.5 overflow-y-auto">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             const Icon = item.icon;
             return (
               <Link
@@ -164,7 +164,7 @@ export default function AdminLayout({
 
             <nav className="flex-1 py-6 px-4 flex flex-col gap-1.5 overflow-y-auto">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 const Icon = item.icon;
                 return (
                   <Link
