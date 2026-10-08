@@ -32,8 +32,10 @@ jobs:
           script: |
             const {checkSite, checkBackup, updateAlert} = require('./scripts/operations/monitor.cjs');
             if (process.env.ALERT_DRILL === 'true') {
-              await updateAlert({github, context}, false, true);
-              await updateAlert({github, context}, true, true);
+              const issue = await updateAlert({github, context}, false, true);
+              if (!issue?.number) throw new Error('Drill issue creation was not confirmed');
+              const closed = await updateAlert({github, context}, true, true, false, issue);
+              if (closed?.state !== 'closed') throw new Error('Drill recovery was not confirmed');
               await core.summary.addHeading('Alert drill passed').addRaw('A drill issue was opened and closed. Production was not interrupted. Inbox delivery still depends on your GitHub notification settings.').write();
               return;
             }

@@ -20,18 +20,22 @@ async function checkBackup({ github, context }, now = Date.now()) {
   return files.artifacts.some(file => file.name === `encrypted-backup-${run.id}` && !file.expired && file.size_in_bytes > 0);
 }
 
-async function updateAlert({ github, context }, healthy, drill = false, backup = false) {
+async function updateAlert({ github, context }, healthy, drill = false, backup = false, knownIssue = null) {
   const title = backup ? '[Operations] Backup overdue' : drill ? '[Operations drill] Website availability' : '[Operations] Website unavailable';
   const marker = backup ? '<!-- gokul-operations-backup -->' : drill ? '<!-- gokul-operations-drill -->' : '<!-- gokul-operations-monitor -->';
   const { owner, repo } = context.repo;
   const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', per_page: 100 });
-  const existing = issues.find(issue => !issue.pull_request && issue.title === title && issue.body?.includes(marker) && issue.user?.type === 'Bot');
+  const existing = knownIssue || issues.find(issue => !issue.pull_request && issue.title === title && issue.body?.includes(marker) && issue.user?.type === 'Bot');
   const run = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
   if (!healthy && !existing) {
-    await github.rest.issues.create({ owner, repo, title, body: `${marker}\n${backup ? 'No successful backup with an available encrypted artifact was found within the last 30 hours.' : drill ? 'This is a planned alert drill. Production was not changed.' : 'The public website/database readiness check failed three times.'}\n\n[Inspect the workflow run](${run}). No member information or credentials are included in this alert.` });
+    const created = await github.rest.issues.create({ owner, repo, title, body: `${marker}\n${backup ? 'No successful backup with an available encrypted artifact was found within the last 30 hours.' : drill ? 'This is a planned alert drill. Production was not changed.' : 'The public website/database readiness check failed three times.'}\n\n[Inspect the workflow run](${run}). No member information or credentials are included in this alert.` });
+    return created.data;
   } else if (healthy && existing) {
     await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body: `${backup ? 'A recent successful backup and encrypted artifact are available. A restore test is still a separate check.' : drill ? 'Alert drill recovered successfully.' : 'The website/database readiness check is healthy again.'}\n\n[Verification run](${run}).` });
-    await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed', state_reason: 'completed' });
+    const closed = await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed', state_reason: 'completed' });
+    if (closed.data.state !== 'closed') throw new Error('Alert closure was not confirmed');
+    return closed.data;
   }
+  return existing;
 }
 module.exports = { checkSite, checkBackup, updateAlert };

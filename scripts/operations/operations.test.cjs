@@ -63,9 +63,9 @@ test('alerts deduplicate failures, close on recovery, and keep drill separate', 
     paginate: async () => issues.filter(issue => issue.state === 'open'),
     rest: { issues: {
       listForRepo() {},
-      create: async data => { issues.push({ ...data, number: issues.length + 1, user: { type: 'Bot' }, state: 'open' }); },
+      create: async data => { const issue = { ...data, number: issues.length + 1, user: { type: 'Bot' }, state: 'open' }; issues.push(issue); return { data: issue }; },
       createComment: async () => { comments++; },
-      update: async data => { Object.assign(issues.find(issue => issue.number === data.issue_number), data); },
+      update: async data => ({ data: Object.assign(issues.find(issue => issue.number === data.issue_number), data) }),
     } },
   };
   const client = { github, context: { repo: { owner: 'test', repo: 'test' }, runId: 1 } };
@@ -75,4 +75,9 @@ test('alerts deduplicate failures, close on recovery, and keep drill separate', 
   assert.equal(issues[0].state, 'open'); assert.equal(issues[1].state, 'closed');
   await updateAlert(client, true);
   assert.equal(issues[0].state, 'closed'); assert.equal(comments, 2);
+  // GitHub's list endpoint may lag behind newly created issues.
+  github.paginate = async () => [];
+  const fresh = await updateAlert(client, false, true);
+  const closed = await updateAlert(client, true, true, false, fresh);
+  assert.equal(closed.state, 'closed');
 });
