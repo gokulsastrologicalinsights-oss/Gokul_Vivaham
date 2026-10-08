@@ -75,7 +75,7 @@ export function ContactForm() {
               id="support-mobile" type="tel"
               value={mobile}
               onChange={(e) => setMobile(e.target.value)}
-              placeholder="e.g. +91 94445 59071"
+              placeholder="e.g. +91 93423 66513"
               className="h-11 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-maroon-500"
             />
           </div>

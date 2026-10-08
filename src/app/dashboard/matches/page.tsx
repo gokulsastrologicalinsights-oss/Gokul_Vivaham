@@ -675,7 +675,7 @@ function MatchesContent() {
               <div className="flex items-center gap-3">
                 {/* WhatsApp Inquiry Button */}
                  <a
-                  href={`https://wa.me/919444559071?text=I'm%20inquiring%20about%2520Gokul%2520Vivaham%2520Profile%2520ID%2520${activeProfile.id}%20(${activeProfile.name})`}
+                  href={`https://wa.me/919342366513?text=I'm%20inquiring%20about%2520Gokul%2520Vivaham%2520Profile%2520ID%2520${activeProfile.id}%20(${activeProfile.name})`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 inline-flex items-center gap-1.5"

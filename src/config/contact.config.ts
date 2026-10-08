@@ -9,12 +9,12 @@ export const contactConfig = {
     tagline: 'Where Matches Begin with Compatibility',
   },
   phone: {
-    display: '+91 94445 59071',
-    link: 'tel:+919444559071',
+    display: '+91 93423 66513',
+    link: 'tel:+919342366513',
   },
   whatsapp: {
-    display: '+91 94445 59071',
-    link: 'https://wa.me/919444559071',
+    display: '+91 93423 66513',
+    link: 'https://wa.me/919342366513',
   },
   email: {
     support: 'vivahamgokul@gmail.com',

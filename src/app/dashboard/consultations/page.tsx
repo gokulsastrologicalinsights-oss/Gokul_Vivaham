@@ -209,7 +209,7 @@ Please guide me regarding the next steps.
 Thank you.`;
 
         const encodedMsg = encodeURIComponent(whatsappMsg);
-        const whatsappUrl = `https://wa.me/919444559071?text=${encodedMsg}`;
+        const whatsappUrl = `https://wa.me/919342366513?text=${encodedMsg}`;
 
         setBookingSuccess({
           astrologer: selectedAstrologer || ASTROLOGERS[0],
@@ -982,7 +982,7 @@ Thank you.`;
                           </a> : <span className="text-xs">Meeting link will appear after scheduling.</span>}
                           {booking.scheduled_at && <span className="text-xs">{new Date(booking.scheduled_at).toLocaleString()} · {booking.duration_minutes || 30} minutes</span>}
                           
-                          <a href="https://wa.me/919444559071" className="text-xs underline">Contact office to change slot</a>
+                          <a href="https://wa.me/919342366513" className="text-xs underline">Contact office to change slot</a>
                         </>
                       )}
 
@@ -995,7 +995,7 @@ Thank you.`;
                             Awaiting Gateway Capture
                           </button>
                           
-                          <a href="https://wa.me/919444559071" className="text-xs underline">Contact office to change slot</a>
+                          <a href="https://wa.me/919342366513" className="text-xs underline">Contact office to change slot</a>
                         </>
                       )}
 
