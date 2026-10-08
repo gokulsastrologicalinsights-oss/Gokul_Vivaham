@@ -4,14 +4,24 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: node scripts/check-payment-signatures.cjs
-      - run: npm run build -- --webpack
+      - run: node --test scripts/operations/operations.test.cjs
+      - name: Compile with non-production configuration (never deploy this build)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-build-only.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-not-a-real-public-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-not-a-real-server-key
+          NEXT_PUBLIC_SITE_URL: https://ci-build-only.invalid
+        run: npm run build -- --webpack

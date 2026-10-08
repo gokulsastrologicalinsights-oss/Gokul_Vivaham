@@ -1,0 +1,48 @@
+name: Website monitoring
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+    inputs:
+      alert_drill:
+        description: 'Test alert creation and recovery without interrupting production'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  issues: write
+  actions: read
+concurrency:
+  group: operations-monitor
+  cancel-in-progress: false
+jobs:
+  check:
+    if: github.repository == 'gokulsastrologicalinsights-oss/gokulvivaham' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        env:
+          ALERT_DRILL: ${{ inputs.alert_drill }}
+          BACKUPS_ENABLED: ${{ vars.BACKUPS_ENABLED }}
+        with:
+          script: |
+            const {checkSite, checkBackup, updateAlert} = require('./scripts/operations/monitor.cjs');
+            if (process.env.ALERT_DRILL === 'true') {
+              await updateAlert({github, context}, false, true);
+              await updateAlert({github, context}, true, true);
+              await core.summary.addHeading('Alert drill passed').addRaw('A drill issue was opened and closed. Production was not interrupted. Inbox delivery still depends on your GitHub notification settings.').write();
+              return;
+            }
+            const result = await checkSite('https://gokulvivaham.vercel.app');
+            await updateAlert({github, context}, result.healthy);
+            if (process.env.BACKUPS_ENABLED === 'true') {
+              const fresh = await checkBackup({github, context});
+              await updateAlert({github, context}, fresh, false, true);
+              if (!fresh) core.setFailed('Backup is overdue or its encrypted artifact is missing.');
+            }
+            await core.summary.addHeading(result.healthy ? 'Website and database healthy' : 'Readiness check failed').addRaw(`Attempts: ${result.attempts}. Alerts are tracked in repository issues.`).write();
+            if (!result.healthy) core.setFailed('Website/database readiness check failed.');

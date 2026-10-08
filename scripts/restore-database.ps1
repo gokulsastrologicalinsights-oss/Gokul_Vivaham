@@ -2,7 +2,8 @@ param([Parameter(Mandatory=$true)][string]$Archive, [Parameter(Mandatory=$true)]
 $ErrorActionPreference = 'Stop'
 if ($env:RESTORE_ISOLATED_TARGET -ne 'YES') { throw 'Set RESTORE_ISOLATED_TARGET=YES only for an empty disposable restore database.' }
 if (-not $env:PGHOST -or $env:PGHOST -ne $ExpectedTargetHost) { throw 'The restore target host does not match.' }
-if ($env:PGHOST -match 'rzhkwoeesgyekyutgyqr') { throw 'Refusing restore against the connected application project.' }
+if ($env:PGHOST -match 'rzhkwoeesgyekyutgyqr' -or $env:PGUSER -match 'rzhkwoeesgyekyutgyqr') { throw 'Refusing restore against the connected application project, including its pooler.' }
+if (-not $env:PGDATABASE -or -not $env:PGUSER) { throw 'Set explicit PGDATABASE and PGUSER for the isolated target.' }
 Get-Command pg_restore -ErrorAction Stop | Out-Null
 $archivePath = (Resolve-Path -LiteralPath $Archive).Path
 $manifest = Get-Content -LiteralPath ($archivePath + '.sha256.json') -Raw | ConvertFrom-Json
