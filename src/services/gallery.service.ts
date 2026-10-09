@@ -1,6 +1,7 @@
 import { syncServerSession } from '@/lib/auth/session-client';
 import { supabase } from '@/lib/supabase';
 import { uploadService } from '@/services/upload.service';
+import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
 
 const isMockMode = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -117,8 +118,8 @@ export const galleryService = {
         const userImages = gallery.filter((img) => img.user_id === userId);
         
         // Keep mock mode aligned with the database-enforced limit.
-        if (userImages.length >= 2) {
-          throw new Error('Gallery capacity limit reached. You can upload up to 2 photos.');
+        if (userImages.length >= MAX_PROFILE_PHOTOS) {
+          throw new Error(`You can upload up to ${MAX_PROFILE_PHOTOS} photos. Delete an existing photo before uploading another.`);
         }
 
         const nextSortOrder = userImages.reduce((max, img) => Math.max(max, img.sort_order), -1) + 1;

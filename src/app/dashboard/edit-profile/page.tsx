@@ -12,6 +12,7 @@ import { useProfileStore } from '@/stores/profileStore';
 import RasiStarDropdowns from '@/components/ui/input/RasiStarDropdowns';
 import ReligionCommunityDropdowns from '@/components/ui/input/ReligionCommunityDropdowns';
 import { validateReligionCommunity } from '@/validations/religion-community.schema';
+import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
 
 export default function Profile() {
   
@@ -55,6 +56,7 @@ export default function Profile() {
   });
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [galleryPhotoCount, setGalleryPhotoCount] = useState(0);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
@@ -119,16 +121,12 @@ export default function Profile() {
             partnerExpectations: data.partner_expectations || ''
           });
 
-          const { data: gallery } = await supabase
-            .from('gallery_images')
-            .select('image_url, thumbnail_url')
-            .eq('user_id', currentUserId)
-            .eq('is_profile_picture', true)
-            .limit(1)
-            .maybeSingle();
-
-          if (gallery) {
-            setProfilePhoto(gallery.thumbnail_url || gallery.image_url);
+          const { data: gallery, error: galleryError } = await galleryService.getGalleryImages(currentUserId);
+          if (galleryError) throw galleryError;
+          setGalleryPhotoCount(gallery.length);
+          const primaryPhoto = gallery.find((photo) => photo.is_profile_picture) || gallery[0];
+          if (primaryPhoto) {
+            setProfilePhoto(primaryPhoto.thumbnail_url || primaryPhoto.image_url);
           }
         }
       } catch (e) {
@@ -305,7 +303,7 @@ export default function Profile() {
     try {
       const gallery = await galleryService.getGalleryImages(userId);
       if (gallery.error) throw gallery.error;
-      if (gallery.data.length >= 2) throw new Error('Your gallery has two photos. Remove one in My Gallery before uploading another.');
+      if (gallery.data.length >= MAX_PROFILE_PHOTOS) throw new Error(`Your profile already has ${MAX_PROFILE_PHOTOS} photos. Delete one in My Gallery before uploading another.`);
       const {url,thumbnailUrl,error} = await uploadService.uploadFile(file,'photos');
       if (error || !url) throw error || new Error('Photo upload failed.');
       uploadedPath = url;
@@ -313,6 +311,7 @@ export default function Profile() {
       const attached = await galleryService.uploadGalleryImage(userId,url,true,thumbnailUrl);
       if (attached.error || !attached.data) throw attached.error || new Error('Photo could not be saved.');
       uploadedPath = null;
+      setGalleryPhotoCount(gallery.data.length + 1);
       setProfilePhoto(attached.data.image_url);
       setSuccess('Profile photo uploaded successfully. Awaiting admin review.');
     } catch (error) {
@@ -731,7 +730,7 @@ export default function Profile() {
                   type="file" 
                   accept="image/*" 
                   onChange={handlePhotoUpload}
-                  disabled={uploadingPhoto}
+                   disabled={uploadingPhoto || galleryPhotoCount >= MAX_PROFILE_PHOTOS}
                   aria-label="Upload primary profile photo"
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
@@ -749,23 +748,17 @@ export default function Profile() {
                 )}
                 
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{uploadingPhoto ? 'Uploading photo…' : 'Upload primary profile photo'}</span>
-                  <span className="text-xs text-zinc-450 dark:text-zinc-500">Requires Admin review to be visible to other members.</span>
+                   <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{uploadingPhoto ? 'Uploading photo…' : galleryPhotoCount >= MAX_PROFILE_PHOTOS ? `You have reached the ${MAX_PROFILE_PHOTOS}-photo limit` : 'Upload primary profile photo'}</span>
+                   <span className="text-xs text-zinc-450 dark:text-zinc-500">{galleryPhotoCount >= MAX_PROFILE_PHOTOS ? 'Delete an existing photo in My Gallery before uploading a newer one.' : 'Requires Admin review to be visible to other members.'}</span>
                 </div>
               </div>
 
               {photoError && <p role="alert" className="text-sm text-red-600">{photoError}</p>}
-              <p className="text-xs">JPEG, PNG or WebP · Maximum 5MB · Up to two photos. Images are resized into private thumbnail/display variants. Manage existing photos in <a href="/dashboard/gallery" className="underline">My Gallery</a>.</p>
+              <p className="text-xs">JPEG, PNG or WebP · Maximum 5MB · Up to {MAX_PROFILE_PHOTOS} photos. Delete an existing photo before uploading a replacement. Images are resized into private thumbnail/display variants. Manage existing photos in <a href="/dashboard/gallery" className="underline">My Gallery</a>.</p>
               {/* Additional gallery slots */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">
-                  Photo Slot 2
-                </div>
-                <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">
-                  Photo Slot 3
-                </div>
-                <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">
-                  Manage in My Gallery
+                  {galleryPhotoCount >= MAX_PROFILE_PHOTOS ? 'Delete one to replace a photo' : 'Add or manage photos in My Gallery'}
                 </div>
               </div>
             </div>

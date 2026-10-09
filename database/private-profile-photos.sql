@@ -27,6 +27,18 @@ end $$;
 revoke execute on function public.attach_member_photo(uuid,text,text,boolean) from public,anon,authenticated;
 grant execute on function public.attach_member_photo(uuid,text,text,boolean) to service_role;
 drop function if exists public.attach_member_photo(uuid,text,boolean);
+create or replace function public.enforce_gallery_photo_limit() returns trigger
+language plpgsql set search_path='' as $$
+declare photo_count integer;
+begin
+ select count(*) into photo_count from public.gallery_images where user_id=new.user_id;
+ if photo_count >= 2 then raise exception 'Maximum two photos'; end if;
+ return new;
+end $$;
+drop trigger if exists enforce_gallery_photo_limit on public.gallery_images;
+create trigger enforce_gallery_photo_limit before insert on public.gallery_images
+for each row execute function public.enforce_gallery_photo_limit();
+revoke execute on function public.enforce_gallery_photo_limit() from public,anon,authenticated;
 create or replace function public.guard_gallery_review() returns trigger language plpgsql set search_path='' as $$
 begin
  if current_user in ('anon','authenticated') and not private.admin_verified() then

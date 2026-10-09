@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { galleryService, GalleryImage } from '@/services/gallery.service';
 import { uploadService } from '@/services/upload.service';
+import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
 
 export default function GalleryPage() {
   const { user } = useAuthStore();
@@ -59,8 +60,8 @@ export default function GalleryPage() {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
-    if (images.length >= 2) {
-      showToast('You can upload a maximum of 2 gallery photos.', true);
+    if (images.length >= MAX_PROFILE_PHOTOS) {
+      showToast(`You can upload up to ${MAX_PROFILE_PHOTOS} photos. Delete an existing photo before uploading another.`, true);
       return;
     }
 
@@ -232,7 +233,7 @@ export default function GalleryPage() {
               Manage Photo Gallery
             </h1>
             <p className="text-xs text-zinc-400 leading-normal max-w-xl font-light">
-              Add up to 2 photos of yourself. Designate one as your main profile picture, control privacy levels, and arrange the display order. Uploads are resized into private thumbnail/display variants and undergo admin safety review before showing publicly.
+              Add up to {MAX_PROFILE_PHOTOS} photos of yourself. To upload a newer photo after reaching the limit, delete an existing photo first. Designate one as your main profile picture, control privacy levels, and arrange the display order. Uploads are resized into private thumbnail/display variants and undergo admin safety review before showing publicly.
             </p>
           </div>
           <button
@@ -266,7 +267,7 @@ export default function GalleryPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Slot loop */}
-            {[0, 1].map((slotIdx) => {
+            {Array.from({ length: Math.max(MAX_PROFILE_PHOTOS, images.length) }, (_, slotIdx) => slotIdx).map((slotIdx) => {
               const image = images[slotIdx];
 
               if (image) {
@@ -439,6 +440,8 @@ export default function GalleryPage() {
                         type="file" 
                         accept="image/jpeg,image/png,image/webp" 
                         onChange={handleFileUpload}
+                        disabled={uploading || images.length >= MAX_PROFILE_PHOTOS}
+                        aria-label={`Upload photo to slot ${slotIdx + 1}`}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                       />
                     </>
