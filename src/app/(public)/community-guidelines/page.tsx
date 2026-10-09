@@ -28,11 +28,14 @@ export default function CommunityGuidelines() {
           Gokul Vivaham is a family-oriented matchmaking platform. All communications, whether via chat, call, or meetings, must be conducted with dignity, respect, and courtesy. Abusive language, harassment, discrimination, or threats will result in immediate profile suspension and potential legal referral under applicable Indian penal codes.
         </p>
 
-        <div className="flex items-center gap-2 text-maroon-700 dark:text-gold-400 font-serif font-bold text-lg border-b border-zinc-100 dark:border-zinc-850 pb-2">
+        <div id="photo-guidelines" className="scroll-mt-24 flex items-center gap-2 text-maroon-700 dark:text-gold-400 font-serif font-bold text-lg border-b border-zinc-100 dark:border-zinc-850 pb-2">
           <CheckCircle className="h-5 w-5" /> 2. Accuracy of Profile Information
         </div>
         <p>
           Members must submit only true, accurate, and current information regarding their age, marital status, education, occupation, and family background. Intentionally falsifying profiles, hosting fake photos, or uploading wrong birth details is strictly prohibited.
+        </p>
+        <p className="rounded-xl border border-sandal-200 bg-sandal-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Photo Guidelines:</strong> Upload only a recent, clear photo of yourself. Your face should be visible, without contact details, offensive content, impersonation, group-photo ambiguity, or misleading edits. Every upload is reviewed before activation.
         </p>
 
         <div className="flex items-center gap-2 text-maroon-700 dark:text-gold-400 font-serif font-bold text-lg border-b border-zinc-100 dark:border-zinc-850 pb-2">

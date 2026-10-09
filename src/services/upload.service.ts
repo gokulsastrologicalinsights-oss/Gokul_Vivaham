@@ -11,7 +11,7 @@ const extensions: Record<string,string> = { 'image/jpeg':'jpg','image/png':'png'
 export const uploadService = {
   async uploadFile(file: File, bucket: Bucket) {
     try {
-      if (!file.size || file.size > 5 * 1024 * 1024) throw new Error('Choose a non-empty file no larger than 5MB.');
+      if (!file.size || (bucket === 'photos' ? file.size >= 5 * 1024 * 1024 : file.size > 5 * 1024 * 1024)) throw new Error(bucket === 'photos' ? 'Each photo must be smaller than 5 MB.' : 'Choose a non-empty file no larger than 5MB.');
       if (!types[bucket].includes(file.type)) throw new Error('Unsupported file type. Horoscopes require PDF; ID proofs accept JPEG, PNG, WebP or PDF.');
       const {data:{user},error:authError} = await supabase.auth.getUser();
       if (authError || !user) throw new Error('Please sign in before uploading documents.');

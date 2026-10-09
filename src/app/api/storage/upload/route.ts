@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const bucketValue = form?.get('bucket');
   const file = form?.get('file');
-  if (!validBucket(bucketValue) || !(file instanceof File) || !file.size || file.size > PHOTO_MAX_UPLOAD_BYTES)
+  if (!validBucket(bucketValue) || !(file instanceof File) || !file.size || (bucketValue === 'photos' ? file.size >= PHOTO_MAX_UPLOAD_BYTES : file.size > PHOTO_MAX_UPLOAD_BYTES))
     return NextResponse.json({ error: 'Choose a valid file no larger than 5MB.' }, { status: 400 });
   if (!allowedTypes[bucketValue].includes(file.type))
     return NextResponse.json({ error: 'Unsupported file type.' }, { status: 400 });

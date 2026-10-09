@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import MyPhotosExperience from '@/components/dashboard/MyPhotosExperience';
 import { 
   Image as ImageIcon, Upload, Trash2, Check, ArrowLeft, ArrowRight,
   Shield, Eye, Lock, Star, Sparkles, Loader2, AlertCircle, RefreshCw,
@@ -11,7 +12,7 @@ import { galleryService, GalleryImage } from '@/services/gallery.service';
 import { uploadService } from '@/services/upload.service';
 import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
 
-export default function GalleryPage() {
+function LegacyGalleryPage() {
   const { user } = useAuthStore();
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -457,4 +458,8 @@ export default function GalleryPage() {
       </div>
     </div>
   );
+}
+
+export default function GalleryPage() {
+  return <MyPhotosExperience />;
 }
