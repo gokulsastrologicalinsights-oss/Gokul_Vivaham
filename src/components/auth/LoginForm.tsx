@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { authService } from '@/services/auth.service';
 import { syncServerSession } from '@/lib/auth/session-client';
+import { getAuthenticatedLandingPath } from '@/lib/auth/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginForm() {
@@ -83,7 +84,11 @@ export default function LoginForm() {
         }
         setSuccessMessage('Login successful!');
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          window.location.href = getAuthenticatedLandingPath({
+            role: access.role,
+            isAdmin: access.isAdmin,
+            mfaRequired: access.mfa_required,
+          });
         }, 1500);
       }
     } catch (err: any) {
@@ -247,4 +252,3 @@ export default function LoginForm() {
     </div>
   );
 }
-

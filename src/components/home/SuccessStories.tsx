@@ -30,7 +30,7 @@ export default function SuccessStories() {
         
         <div className="flex flex-col items-center gap-3">
           <h2 className="text-3xl font-serif font-bold text-zinc-900 dark:text-zinc-50">
-            Gokul Success Stories
+            Gokul Vivaham Success Stories
           </h2>
           <div className="w-16 h-1 luxury-gradient rounded-full" />
           <p className="text-sm text-zinc-655 dark:text-zinc-400 max-w-xl font-light">
@@ -75,5 +75,4 @@ export default function SuccessStories() {
     </section>
   );
 }
-
 

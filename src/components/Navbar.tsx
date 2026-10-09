@@ -8,11 +8,14 @@ import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { contactConfig } from '@/config/contact.config';
+import { useAuth } from '@/hooks/useAuth';
+import { getAuthenticatedLandingPath } from '@/lib/auth/navigation';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const pathname = usePathname();
+  const { role, loading: authLoading } = useAuth();
 
   useEffect(() => {
     // Listen for auth state changes
@@ -53,6 +56,9 @@ export default function Navbar() {
     ...(user ? [{ name: 'Chat', href: '/dashboard/chat' }] : []),
     { name: 'Support', href: '/contact' },
   ];
+  const homeHref = user && !authLoading
+    ? getAuthenticatedLandingPath({ role })
+    : '/';
 
   return (
     <nav className="sticky top-0 z-50 w-full glass-panel border-b border-border shadow-sm">
@@ -60,7 +66,7 @@ export default function Navbar() {
         <div className="flex min-h-20 items-center justify-between gap-4 py-2">
           {/* Logo & Branding */}
           <div className="flex min-w-0 items-center">
-            <Link href="/" className="flex flex-col justify-center select-none group">
+            <Link href={homeHref} className="flex flex-col justify-center select-none group">
               <div className="flex items-center gap-1.5">
                 <Heart className="h-6 w-6 text-primary fill-primary group-hover:scale-110 transition-transform duration-300" />
                 <span className="truncate text-xl font-serif font-bold text-primary leading-none sm:text-2xl">

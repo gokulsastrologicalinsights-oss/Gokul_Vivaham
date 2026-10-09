@@ -13,7 +13,7 @@ export function SupportSection({ compact = false }: SupportSectionProps) {
       <div className="p-4 rounded-xl bg-sandal-50/50 dark:bg-zinc-900/40 border border-sandal-200/50 dark:border-zinc-800 text-left">
         <div className="flex items-center gap-1.5 text-xs font-serif font-bold text-maroon-700 dark:text-gold-400 mb-2">
           <Heart className="h-3.5 w-3.5 fill-current text-maroon-500" />
-          <span>Gokul Support Desk</span>
+          <span>Gokul Vivaham Support Desk</span>
         </div>
         <div className="space-y-1.5 text-xs text-zinc-650 dark:text-zinc-400">
           <p className="flex items-center gap-2">

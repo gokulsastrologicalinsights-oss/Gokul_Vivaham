@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { resolveAccess } from '@/lib/auth/access';
+import { getAuthenticatedLandingPath, isAdminRoute, isMemberProtectedRoute } from '@/lib/auth/navigation';
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Define route lists
-  const isProtectedRoute = 
-    path.startsWith('/dashboard') || 
-    path.startsWith('/profile/edit') || 
-    path.startsWith('/chat') || 
-    path.startsWith('/subscription') || 
-    path.startsWith('/verify');
-  const isAdminRoute = path.startsWith('/admin') && path !== '/admin/login';
+  const isMemberRoute = isMemberProtectedRoute(path);
+  const isAdminArea = isAdminRoute(path);
 
   // Retrieve auth token from cookies
   const token = request.cookies.get('sb-access-token')?.value;
@@ -21,7 +17,7 @@ export async function proxy(request: NextRequest) {
   const isLoggedIn = Boolean(access && !access.mfaRequired);
 
   // Handle redirect if not authenticated
-  if (isProtectedRoute && !isLoggedIn) {
+  if (isMemberRoute && !isLoggedIn) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     const response = NextResponse.redirect(url);
@@ -30,7 +26,7 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (isAdminRoute && !isLoggedIn) {
+  if (isAdminArea && !isLoggedIn) {
     const url = request.nextUrl.clone();
     url.pathname = '/admin/login';
     const response = NextResponse.redirect(url);
@@ -39,10 +35,19 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // The public homepage is only available to logged-out visitors. Use the
+  // server-verified role so direct visits, refreshes, new tabs, and history
+  // navigation cannot render the public landing page for an active session.
+  if (path === '/' && access) {
+    const url = request.nextUrl.clone();
+    url.pathname = getAuthenticatedLandingPath(access);
+    return NextResponse.redirect(url);
+  }
+
   // Role-based Access Control checks
   if (isLoggedIn) {
     // 1. Admin/Moderator protection (level >= 3 required)
-    if (isAdminRoute && !access?.isAdmin) {
+    if (isAdminArea && !access?.isAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = access?.mfaRequired ? '/admin/login' : '/dashboard';
       return NextResponse.redirect(url);
@@ -86,5 +91,4 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
-
 

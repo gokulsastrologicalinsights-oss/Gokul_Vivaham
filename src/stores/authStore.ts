@@ -75,9 +75,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
       document.cookie = `supabase-auth-token=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
 
-      // 4. Redirect to login page
-      const isAdmin = window.location.pathname.startsWith('/admin');
-      window.location.href = isAdmin ? '/admin/login' : '/login';
+      // 4. Replace the current history entry so the public homepage is the
+      // only landing page shown after a successful logout.
+      window.location.replace('/');
     }
 
     set({ user: null, session: null, role: 'user', loading: false });

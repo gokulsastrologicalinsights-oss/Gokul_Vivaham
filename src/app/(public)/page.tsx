@@ -9,8 +9,25 @@ import AstroMatcher from '@/components/home/AstroMatcher';
 import SuccessStories from '@/components/home/SuccessStories';
 import FaqSection from '@/components/home/FaqSection';
 import SampleProfiles from '@/components/SampleProfiles';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { getAuthenticatedLandingPath } from '@/lib/auth/navigation';
 
 export default function Home() {
+  const router = useRouter();
+  const { isAuthenticated, loading, role } = useAuth();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.replace(getAuthenticatedLandingPath({ role }));
+    }
+  }, [isAuthenticated, loading, role, router]);
+
+  if (loading || isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col w-full relative">
       

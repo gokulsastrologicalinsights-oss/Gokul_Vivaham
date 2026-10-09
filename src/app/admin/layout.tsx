@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { 
   Users, Star, ShieldAlert, BarChart3, CreditCard, 
   CheckSquare, Settings, Bell, LogOut, Menu, X, 
@@ -24,7 +24,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dbMode, setDbMode] = useState<'Mock Database' | 'Live Supabase'>('Mock Database');
@@ -38,7 +37,6 @@ export default function AdminLayout({
   const handleAdminSignOut = async () => {
     try {
       await useAuthStore.getState().logout();
-      router.push('/admin/login');
     } catch (e: any) {
       alert('Error signing out: ' + e.message);
     }
@@ -245,7 +243,7 @@ export default function AdminLayout({
                 AD
               </div>
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-semibold text-foreground">Gokul Admin</span>
+                <span className="text-xs font-semibold text-foreground">Gokul Vivaham Admin</span>
                 <span className="text-[9px] font-mono text-primary uppercase tracking-widest font-bold">System Operator</span>
               </div>
             </div>

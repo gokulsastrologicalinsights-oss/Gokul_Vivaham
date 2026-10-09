@@ -4,9 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, Mail, Phone, MapPin } from 'lucide-react';
 import { contactConfig } from '@/config/contact.config';
+import { useAuth } from '@/hooks/useAuth';
+import { getAuthenticatedLandingPath } from '@/lib/auth/navigation';
 
 export default function Footer() {
   const pathname = usePathname();
+  const { isAuthenticated, loading: authLoading, role } = useAuth();
+  const homeHref = isAuthenticated && !authLoading
+    ? getAuthenticatedLandingPath({ role })
+    : '/';
 
   if (pathname?.startsWith('/admin')) {
     return null;
@@ -18,7 +24,7 @@ export default function Footer() {
           
           {/* Logo & Description */}
           <div className="md:col-span-1.5 flex flex-col gap-4">
-            <Link href="/" className="flex flex-col select-none group">
+            <Link href={homeHref} className="flex flex-col select-none group">
               <div className="flex items-center gap-1.5">
                 <Heart className="h-5 w-5 text-primary fill-primary" />
                 <span className="text-xl font-serif font-bold text-primary">
@@ -53,7 +59,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-sm text-muted">
               <li>
-                <Link href="/" className="hover:text-primary transition-colors">
+                <Link href={homeHref} className="hover:text-primary transition-colors">
                   Home / Welcome
                 </Link>
               </li>
@@ -110,7 +116,7 @@ export default function Footer() {
           {/* Contact Details */}
           <div className="flex flex-col gap-3">
             <h4 className="text-xs font-bold text-primary uppercase tracking-widest">
-              Gokul Offices
+              Gokul Vivaham Offices
             </h4>
             <ul className="space-y-3 text-sm text-muted">
               <li className="flex items-start gap-2">

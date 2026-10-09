@@ -11,7 +11,7 @@ interface ContactCardProps {
 }
 
 export function ContactCard({
-  title = 'Gokul Support Desk',
+  title = 'Gokul Vivaham Support Desk',
   subtitle = 'Get in touch for matchmaking queries and support',
   showIcon = true
 }: ContactCardProps) {

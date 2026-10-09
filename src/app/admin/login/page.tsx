@@ -57,7 +57,7 @@ export default function AdminLogin() {
         throw new Error('Access denied: administrator membership is required.');
       }
       const access = await syncServerSession(data.session.access_token);
-      if (access.isAdmin) { router.push('/admin/users'); router.refresh(); return; }
+      if (access.isAdmin) { router.push('/admin/dashboard'); router.refresh(); return; }
       const { data: factors, error: factorError } = await supabase.auth.mfa.listFactors();
       if (factorError) throw factorError;
       const verified = factors.totp.find(factor => factor.status === 'verified');

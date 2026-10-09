@@ -3,17 +3,23 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Search, Heart, MessageSquare, User } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { getAuthenticatedLandingPath } from '@/lib/auth/navigation';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const { isAuthenticated, loading: authLoading, role } = useAuth();
 
   // Hide mobile bottom navigation in admin views
   if (pathname?.startsWith('/admin') || pathname === '/admin/login') {
     return null;
   }
 
+  const homeHref = isAuthenticated && !authLoading
+    ? getAuthenticatedLandingPath({ role })
+    : '/';
   const tabs = [
-    { name: 'Home', href: '/', icon: Home },
+    { name: 'Home', href: homeHref, icon: Home },
     { name: 'Search', href: '/search', icon: Search },
     { name: 'Matches', href: '/dashboard/matches', icon: Heart },
     { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
@@ -25,7 +31,9 @@ export default function MobileBottomNav() {
       <div className="mx-auto flex h-16 max-w-md items-center justify-around px-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = pathname === tab.href || (tab.href !== '/' && pathname?.startsWith(tab.href));
+          const isActive = tab.name === 'Home'
+            ? pathname === tab.href
+            : pathname === tab.href || (tab.href !== '/' && pathname?.startsWith(tab.href));
 
           return (
             <Link

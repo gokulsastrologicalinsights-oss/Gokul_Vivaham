@@ -13,6 +13,7 @@ import AuthProvider from "@/providers/AuthProvider";
 import ThemeProvider from "@/providers/ThemeProvider";
 import LanguageProvider from "@/providers/LanguageProvider";
 import NotificationProvider from "@/providers/NotificationProvider";
+import SessionNavigationGuard from "@/components/auth/SessionNavigationGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -92,17 +93,19 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <QueryProvider>
           <AuthProvider>
-            <ThemeProvider>
-              <LanguageProvider>
-                <NotificationProvider>
-                  <Navbar />
-                  <main className="flex min-w-0 flex-1 w-full flex-col pb-16 lg:pb-0">{children}</main>
-                  <Footer />
-                  <MobileBottomNav />
-                  <WhatsAppFloatingButton />
-                </NotificationProvider>
-              </LanguageProvider>
-            </ThemeProvider>
+            <SessionNavigationGuard>
+              <ThemeProvider>
+                <LanguageProvider>
+                  <NotificationProvider>
+                    <Navbar />
+                    <main className="flex min-w-0 flex-1 w-full flex-col pb-16 lg:pb-0">{children}</main>
+                    <Footer />
+                    <MobileBottomNav />
+                    <WhatsAppFloatingButton />
+                  </NotificationProvider>
+                </LanguageProvider>
+              </ThemeProvider>
+            </SessionNavigationGuard>
           </AuthProvider>
         </QueryProvider>
       </body>

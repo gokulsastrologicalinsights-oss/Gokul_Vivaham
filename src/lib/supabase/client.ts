@@ -257,7 +257,7 @@ class MockQueryBuilder {
           store[key] = [{
             id: 'admin-user-id',
             auth_user_id: 'demo-admin-id',
-            full_name: 'Gokul Admin',
+            full_name: 'Gokul Vivaham Admin',
             email: 'admin@gokul.com',
             role: 'admin'
           }];
@@ -315,7 +315,7 @@ class MockQueryBuilder {
       return [{
         id: 'admin-user-id',
         auth_user_id: 'demo-admin-id',
-        full_name: 'Gokul Admin',
+        full_name: 'Gokul Vivaham Admin',
         email: 'admin@gokul.com',
         role: 'admin'
       }];
