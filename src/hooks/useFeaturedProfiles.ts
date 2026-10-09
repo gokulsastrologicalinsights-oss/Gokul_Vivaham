@@ -35,7 +35,7 @@ export function useFeaturedProfiles() {
       const userIds = boostData.map((b: any) => b.user_id);
       const { data: photoData, error: photoErr } = await supabase
         .from('gallery_images')
-        .select('user_id, image_url')
+        .select('user_id, image_url, thumbnail_url')
         .in('user_id', userIds)
         .eq('is_profile_picture', true)
         .eq('moderation_status', 'approved');
@@ -44,7 +44,7 @@ export function useFeaturedProfiles() {
 
       const photoMap = new Map();
       photoData?.forEach((img: any) => {
-        photoMap.set(img.user_id, img.image_url);
+        photoMap.set(img.user_id, img.thumbnail_url || img.image_url);
       });
 
       // 3. Map records into consolidated profiles

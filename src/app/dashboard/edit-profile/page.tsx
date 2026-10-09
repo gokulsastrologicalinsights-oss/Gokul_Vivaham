@@ -121,14 +121,14 @@ export default function Profile() {
 
           const { data: gallery } = await supabase
             .from('gallery_images')
-            .select('image_url')
+            .select('image_url, thumbnail_url')
             .eq('user_id', currentUserId)
             .eq('is_profile_picture', true)
             .limit(1)
             .maybeSingle();
 
           if (gallery) {
-            setProfilePhoto(gallery.image_url);
+            setProfilePhoto(gallery.thumbnail_url || gallery.image_url);
           }
         }
       } catch (e) {
@@ -305,17 +305,20 @@ export default function Profile() {
     try {
       const gallery = await galleryService.getGalleryImages(userId);
       if (gallery.error) throw gallery.error;
-      if (gallery.data.length >= 3) throw new Error('Your gallery has three photos. Remove one in My Gallery before uploading another.');
-      const {url,error} = await uploadService.uploadFile(file,'photos');
+      if (gallery.data.length >= 2) throw new Error('Your gallery has two photos. Remove one in My Gallery before uploading another.');
+      const {url,thumbnailUrl,error} = await uploadService.uploadFile(file,'photos');
       if (error || !url) throw error || new Error('Photo upload failed.');
       uploadedPath = url;
-      const attached = await galleryService.uploadGalleryImage(userId,url,true);
+      if (thumbnailUrl) uploadedPath += `|${thumbnailUrl}`;
+      const attached = await galleryService.uploadGalleryImage(userId,url,true,thumbnailUrl);
       if (attached.error || !attached.data) throw attached.error || new Error('Photo could not be saved.');
       uploadedPath = null;
       setProfilePhoto(attached.data.image_url);
       setSuccess('Profile photo uploaded successfully. Awaiting admin review.');
     } catch (error) {
-      if (uploadedPath) await supabase.storage.from('photos').remove([uploadedPath]);
+      if (uploadedPath) {
+        await Promise.all(uploadedPath.split('|').map(path => uploadService.removeFile('photos', path)));
+      }
       setPhotoError(error instanceof Error ? error.message : 'Photo upload failed. Please retry.');
     } finally { setUploadingPhoto(false); input.value = ''; }
   };
@@ -752,7 +755,7 @@ export default function Profile() {
               </div>
 
               {photoError && <p role="alert" className="text-sm text-red-600">{photoError}</p>}
-              <p className="text-xs">JPEG, PNG or WebP · Maximum 5MB · Up to three photos. Manage existing photos in <a href="/dashboard/gallery" className="underline">My Gallery</a>.</p>
+              <p className="text-xs">JPEG, PNG or WebP · Maximum 5MB · Up to two photos. Images are resized into private thumbnail/display variants. Manage existing photos in <a href="/dashboard/gallery" className="underline">My Gallery</a>.</p>
               {/* Additional gallery slots */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">

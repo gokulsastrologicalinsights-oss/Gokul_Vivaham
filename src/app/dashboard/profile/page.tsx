@@ -58,14 +58,14 @@ export default function DashboardProfilePage() {
           // Fetch profile photo
           const { data: gallery } = await supabase
             .from('gallery_images')
-            .select('image_url')
+            .select('image_url, thumbnail_url')
             .eq('user_id', currentUserId)
             .eq('is_profile_picture', true)
             .limit(1)
             .maybeSingle();
 
           if (gallery) {
-            setProfilePhoto(gallery.image_url);
+            setProfilePhoto(gallery.thumbnail_url || gallery.image_url);
           }
 
           // Fetch contact details from users table
@@ -411,5 +411,4 @@ export default function DashboardProfilePage() {
     </div>
   );
 }
-
 

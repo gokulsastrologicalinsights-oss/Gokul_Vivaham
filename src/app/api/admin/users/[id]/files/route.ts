@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { deleteR2Objects, putR2Object } from '@/lib/r2';
+import { createPhotoVariants, PHOTO_VARIANT_CONTENT_TYPE } from '@/lib/photo-processing';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   if (request.headers.get('origin') !== new URL(request.url).origin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -30,16 +34,31 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!ext || (kind === 'horoscope' ? ext !== 'pdf' : ext === 'pdf')) return NextResponse.json({ error: 'Choose a valid JPEG, PNG, WebP photo or PDF horoscope.' }, { status: 400 });
   const bucket = kind === 'photo' ? 'photos' : 'horoscopes';
   const path = `${account.data.auth_user_id}/${uploadId}.${ext}`;
+  const thumbnailPath = `${account.data.auth_user_id}/${uploadId}/thumbnail.webp`;
+  const displayPath = `${account.data.auth_user_id}/${uploadId}/display.webp`;
   const contentType = ext === 'pdf' ? 'application/pdf' : ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-  const stored = await supabaseAdmin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false });
-  if (stored.error && !['Duplicate', '409'].includes(String(stored.error.name)) && !/already exists|duplicate/i.test(stored.error.message))
+  const storedPaths: string[] = [];
+  try {
+    if (kind === 'photo') {
+      const variants = await createPhotoVariants(bytes);
+      await putR2Object(bucket, thumbnailPath, variants.thumbnail, PHOTO_VARIANT_CONTENT_TYPE);
+      storedPaths.push(thumbnailPath);
+      await putR2Object(bucket, displayPath, variants.display, PHOTO_VARIANT_CONTENT_TYPE);
+      storedPaths.push(displayPath);
+    } else {
+      await putR2Object(bucket, path, bytes, contentType);
+      storedPaths.push(path);
+    }
+  } catch {
+    if (storedPaths.length) await deleteR2Objects(bucket, storedPaths).catch(() => undefined);
     return NextResponse.json({ error: 'File upload failed. Retry the upload.' }, { status: 500 });
+  }
   // Stable upload IDs make retries reuse the same private file and review record.
   if (kind === 'photo') {
-    const attached = await supabaseAdmin.rpc('attach_member_photo', { actor: account.data.auth_user_id, path, primary_photo: true });
+    const attached = await supabaseAdmin.rpc('attach_member_photo', { actor: account.data.auth_user_id, display_path: displayPath, thumbnail_path: thumbnailPath, primary_photo: true });
     if (attached.error) {
-      if (!stored.error) await supabaseAdmin.storage.from(bucket).remove([path]);
-      return NextResponse.json({ error: 'Could not attach photo. Check the three-photo limit and retry.' }, { status: 409 });
+      if (storedPaths.length) await deleteR2Objects(bucket, storedPaths).catch(() => undefined);
+      return NextResponse.json({ error: 'Could not attach photo. Check the two-photo limit and retry.' }, { status: 409 });
     }
     if (attached.data.moderation_status !== 'approved') {
       const reviewed = await supabaseAdmin.rpc('review_member_photo', { actor: access.user.id, photo_id: attached.data.id, decision: 'approved' });
@@ -51,7 +70,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (previous.data?.status !== 'approved') {
       const submitted = previous.data ? { data: previous.data.id, error: null } : await supabaseAdmin.rpc('submit_member_document', { actor: account.data.auth_user_id, kind: 'horoscope', path, label: 'Horoscope supplied by administrator' });
       if (submitted.error) {
-        if (!stored.error) await supabaseAdmin.storage.from(bucket).remove([path]);
+        if (storedPaths.length) await deleteR2Objects(bucket, storedPaths).catch(() => undefined);
         return NextResponse.json({ error: 'Could not attach horoscope. Check whether a document is already approved.' }, { status: 409 });
       }
       const reviewed = await supabaseAdmin.rpc('review_member_document', { actor: access.user.id, request_id: submitted.data, decision: 'approved', reason: null });

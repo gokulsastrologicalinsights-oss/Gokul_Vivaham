@@ -59,30 +59,36 @@ export default function GalleryPage() {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
-    if (images.length >= 3) {
-      showToast('You can upload a maximum of 3 gallery photos.', true);
+    if (images.length >= 2) {
+      showToast('You can upload a maximum of 2 gallery photos.', true);
       return;
     }
 
     setUploading(true);
     setError(null);
+    const uploadedPaths: string[] = [];
     try {
       // 1. Upload to Supabase Storage
-      const { url, error: uploadErr } = await uploadService.uploadFile(file, 'photos');
+      const { url, thumbnailUrl, error: uploadErr } = await uploadService.uploadFile(file, 'photos');
       if (uploadErr || !url) throw uploadErr || new Error('Upload failed');
+      uploadedPaths.push(url);
+      if (thumbnailUrl) uploadedPaths.push(thumbnailUrl);
 
       // 2. Insert metadata record
       const { data, error: dbErr } = await galleryService.uploadGalleryImage(
         user.id,
         url,
-        images.length === 0 // Mark as profile photo if it's the first image
+        images.length === 0, // Mark as profile photo if it's the first image
+        thumbnailUrl,
       );
       if (dbErr) throw dbErr;
+      uploadedPaths.length = 0;
 
       showToast('Photo uploaded successfully! Awaiting moderation.');
       loadGallery();
     } catch (err: any) {
       console.error(err);
+      await Promise.all(uploadedPaths.map(path => uploadService.removeFile('photos', path)));
       showToast(err.message || 'Failed to upload photo. Please check size (<5MB) and format.', true);
     } finally {
       setUploading(false);
@@ -226,7 +232,7 @@ export default function GalleryPage() {
               Manage Photo Gallery
             </h1>
             <p className="text-xs text-zinc-400 leading-normal max-w-xl font-light">
-              Add up to 3 photos of yourself. Designate one as your main profile picture, control privacy levels, and arrange the display order. All photos undergo admin safety review before showing publicly.
+              Add up to 2 photos of yourself. Designate one as your main profile picture, control privacy levels, and arrange the display order. Uploads are resized into private thumbnail/display variants and undergo admin safety review before showing publicly.
             </p>
           </div>
           <button
@@ -260,7 +266,7 @@ export default function GalleryPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Slot loop */}
-            {[0, 1, 2].map((slotIdx) => {
+            {[0, 1].map((slotIdx) => {
               const image = images[slotIdx];
 
               if (image) {
@@ -288,7 +294,7 @@ export default function GalleryPage() {
                     {/* Image Box */}
                     <div className="relative aspect-[3/4] bg-zinc-950 flex items-center justify-center overflow-hidden border-b border-zinc-900">
                       <img 
-                        src={image.image_url} 
+                        src={image.thumbnail_url || image.image_url}
                         alt={`Gallery slot ${slotIdx + 1}`}
                         className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-103 ${
                           image.moderation_status === 'rejected' ? 'opacity-30 blur-sm' : ''

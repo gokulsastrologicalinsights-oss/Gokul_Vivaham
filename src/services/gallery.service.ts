@@ -1,5 +1,6 @@
 import { syncServerSession } from '@/lib/auth/session-client';
 import { supabase } from '@/lib/supabase';
+import { uploadService } from '@/services/upload.service';
 
 const isMockMode = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,6 +12,9 @@ export interface GalleryImage {
   id: string;
   user_id: string;
   image_url: string;
+  thumbnail_url?: string;
+  thumbnail_key?: string;
+  display_key?: string;
   is_profile_picture: boolean;
   is_private: boolean;
   privacy_level: 'public' | 'matches_only' | 'premium_only' | 'hidden';
@@ -106,15 +110,15 @@ export const galleryService = {
     }
   },
 
-  async uploadGalleryImage(userId: string, imageUrl: string, isProfilePicture = false) {
+  async uploadGalleryImage(userId: string, imageUrl: string, isProfilePicture = false, thumbnailUrl?: string) {
     try {
       if (isMockMode()) {
         const gallery = getMockGallery();
         const userImages = gallery.filter((img) => img.user_id === userId);
         
-        // 3 image safety cap
-        if (userImages.length >= 3) {
-          throw new Error('Gallery capacity limit reached. You can upload up to 3 photos.');
+        // Keep mock mode aligned with the database-enforced limit.
+        if (userImages.length >= 2) {
+          throw new Error('Gallery capacity limit reached. You can upload up to 2 photos.');
         }
 
         const nextSortOrder = userImages.reduce((max, img) => Math.max(max, img.sort_order), -1) + 1;
@@ -145,7 +149,7 @@ export const galleryService = {
       const {data:{session}}=await supabase.auth.getSession();
       if (!session || session.user.id !== userId) throw new Error('Please sign in to your own account.');
       await syncServerSession(session.access_token);
-      const response=await fetch('/api/photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:imageUrl,primary:isProfilePicture})});
+      const response=await fetch('/api/photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayPath:imageUrl,thumbnailPath:thumbnailUrl,primary:isProfilePicture})});
       const result=await response.json();
       if(!response.ok) throw new Error(result.error || 'Photo could not be saved.');
       return {data:result.photo as GalleryImage,error:null};
@@ -197,16 +201,19 @@ export const galleryService = {
 
       if (error) throw error;
 
-      if (photo.image_url.startsWith('/api/photos?path=')) {
+      const variantPaths = [photo.display_key, photo.thumbnail_key].filter(Boolean) as string[];
+      if (variantPaths.length) {
+        for (const path of variantPaths) await uploadService.removeFile('photos', path);
+      } else if (photo.image_url.startsWith('/api/photos?path=')) {
         const path = new URL(photo.image_url, window.location.origin).searchParams.get('path');
-        if (path) await supabase.storage.from('photos').remove([path]);
+        if (path) await uploadService.removeFile('photos', path);
       }
       // Remove any legacy public file too.
       if (photo.image_url.includes('/storage/v1/object/public/photos/')) {
         const parts = photo.image_url.split('/public/photos/');
         if (parts.length > 1) {
           const fileName = parts[1];
-          await supabase.storage.from('photos').remove([fileName]);
+          await uploadService.removeFile('photos', fileName);
         }
       }
 
@@ -228,7 +235,7 @@ export const galleryService = {
 
           await supabase
             .from('profiles')
-            .update({ image_url: nextProfilePhoto.image_url })
+            .update({ image_url: nextProfilePhoto.thumbnail_url || nextProfilePhoto.image_url })
             .eq('user_id', userId);
         } else {
           await supabase
@@ -286,7 +293,7 @@ export const galleryService = {
       // 3. Sync to profile table
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ image_url: updatedPhoto.image_url })
+        .update({ image_url: updatedPhoto.thumbnail_url || updatedPhoto.image_url })
         .eq('user_id', userId);
 
       if (profileErr) throw profileErr;
@@ -479,5 +486,3 @@ export const galleryService = {
     }
   }
 };
-
-

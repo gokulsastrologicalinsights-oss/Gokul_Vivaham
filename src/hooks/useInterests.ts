@@ -46,14 +46,14 @@ export function useInterests() {
       // 5. Fetch profile pictures
       const { data: photos, error: photoErr } = await supabase
         .from('gallery_images')
-        .select('user_id, image_url')
+        .select('user_id, image_url, thumbnail_url')
         .in('user_id', otherUserIds)
         .eq('is_profile_picture', true)
         .eq('moderation_status', 'approved');
 
       const photoMap = new Map();
       photos?.forEach((img: any) => {
-        photoMap.set(img.user_id, img.image_url);
+        photoMap.set(img.user_id, img.thumbnail_url || img.image_url);
       });
 
       // 6. Map and return combined records

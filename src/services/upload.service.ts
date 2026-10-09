@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { syncServerSession } from '@/lib/auth/session-client';
 
 type Bucket = 'horoscopes' | 'photos' | 'id-proofs';
 const types: Record<Bucket,string[]> = {
@@ -14,11 +15,22 @@ export const uploadService = {
       if (!types[bucket].includes(file.type)) throw new Error('Unsupported file type. Horoscopes require PDF; ID proofs accept JPEG, PNG, WebP or PDF.');
       const {data:{user},error:authError} = await supabase.auth.getUser();
       if (authError || !user) throw new Error('Please sign in before uploading documents.');
-      const path = `${user.id}/${crypto.randomUUID()}.${extensions[file.type]}`;
-      const {error} = await supabase.storage.from(bucket).upload(path,file,{contentType:file.type,cacheControl:'60',upsert:false});
-      if (error) throw error;
-      return {url:path,error:null};
-    } catch (error) { return {url:null,error:error instanceof Error ? error : new Error('Upload failed. Please retry.')}; }
+      const {data:{session}}=await supabase.auth.getSession();
+      if (!session) throw new Error('Please sign in before uploading documents.');
+      await syncServerSession(session.access_token);
+      const form = new FormData();
+      form.set('bucket', bucket);
+      form.set('file', file);
+      const response = await fetch('/api/storage/upload',{method:'POST',body:form});
+      const result = await response.json().catch(()=>null);
+      if (!response.ok || !result?.url) throw new Error(result?.error || 'Upload failed. Please retry.');
+      return {
+        url: result.url as string,
+        displayUrl: (result.displayUrl || result.url) as string,
+        thumbnailUrl: result.thumbnailUrl as string | undefined,
+        error: null,
+      };
+    } catch (error) { return {url:null,displayUrl:null,thumbnailUrl:null,error:error instanceof Error ? error : new Error('Upload failed. Please retry.')}; }
   },
   async uploadBase64(data: string,bucket: Bucket) {
     try {
@@ -32,10 +44,26 @@ export const uploadService = {
   async getSignedUrl(bucket: Bucket,path: string,expiresIn=300) {
     try {
       if (bucket === 'photos' && path.startsWith('https://')) return {url:path,error:null};
-      if (!/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/.test(path)) throw new Error('Invalid private document path.');
-      const {data,error} = await supabase.storage.from(bucket).createSignedUrl(path,Math.min(300,Math.max(30,expiresIn)));
-      if (error) throw error;
-      return {url:data.signedUrl,error:null};
+      if (!/^[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/(?:thumbnail|display)\.webp|[^/]{1,120}\.(pdf|jpg|png|webp))$/.test(path)) throw new Error('Invalid private document path.');
+      const {data:{session}}=await supabase.auth.getSession();
+      if (!session) throw new Error('Please sign in again.');
+      await syncServerSession(session.access_token);
+      const response = await fetch(`/api/storage/signed-url?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}&expiresIn=${Math.min(300,Math.max(30,expiresIn))}`,{cache:'no-store'});
+      const result = await response.json().catch(()=>null);
+      if (!response.ok || !result?.url) throw new Error(result?.error || 'Document access denied.');
+      return {url:result.url as string,error:null};
     } catch (error) { return {url:null,error:error instanceof Error ? error : new Error('Document access denied.')}; }
+  },
+  async removeFile(bucket: Bucket,path: string) {
+    try {
+      if (!/^[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/(?:thumbnail|display)\.webp|[^/]{1,120}\.(pdf|jpg|png|webp))$/.test(path)) throw new Error('Invalid private document path.');
+      const {data:{session}}=await supabase.auth.getSession();
+      if (!session) throw new Error('Please sign in again.');
+      await syncServerSession(session.access_token);
+      const response = await fetch('/api/storage/object',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({bucket,path})});
+      const result = await response.json().catch(()=>null);
+      if (!response.ok) throw new Error(result?.error || 'File deletion failed.');
+      return {error:null};
+    } catch (error) { return {error:error instanceof Error ? error : new Error('File deletion failed.')}; }
   }
 };

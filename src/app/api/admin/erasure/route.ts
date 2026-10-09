@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { razorpayClient, paymentsConfigured } from '@/lib/payments/config';
+import { deleteR2Objects, type StorageBucket } from '@/lib/r2';
 export const maxDuration=60;
 export async function GET(){
  const access=await authLib.getServerAccess();
@@ -40,7 +41,10 @@ export async function POST(request:Request){
    if(!listed.data?.length) break;
    const groups=new Map<string,string[]>();
    for(const file of listed.data.slice(0,100)){groups.set(file.bucket,[...(groups.get(file.bucket)||[]),file.path]);}
-   for(const [bucket,paths] of groups){const removed=await supabaseAdmin.storage.from(bucket).remove(paths);if(removed.error) throw removed.error;}
+   for(const [bucket,paths] of groups){
+    if(!['photos','horoscopes','id-proofs'].includes(bucket)) throw new Error('Unknown storage bucket');
+    await deleteR2Objects(bucket as StorageBucket,paths);
+   }
   }
   const erased=await supabaseAdmin.rpc('erase_member_records',{job_key:job.id});
   if(erased.error) throw erased.error;

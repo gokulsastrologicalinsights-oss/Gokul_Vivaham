@@ -35,17 +35,20 @@ export default function PendingRegistrationUploads() {
       const {data:{user}}=await supabase.auth.getUser();
       if(user?.id!==files.userId) throw new Error('Please sign in to the account that selected these files.');
       if(files.photo) {
-        const {url,error}=await uploadService.uploadFile(files.photo,'photos');
+        const {url,thumbnailUrl,error}=await uploadService.uploadFile(files.photo,'photos');
         if(error || !url) throw error || new Error('Photo upload failed.');
-        const result=await galleryService.uploadGalleryImage(user.id,url,true);
-        if(result.error) {await supabase.storage.from('photos').remove([url]);throw result.error;}
+        const result=await galleryService.uploadGalleryImage(user.id,url,true,thumbnailUrl);
+        if(result.error) {
+          await Promise.all([url,thumbnailUrl].filter(Boolean).map(path=>uploadService.removeFile('photos',path as string)));
+          throw result.error;
+        }
         remaining={...remaining,photo:null};await saveRegistrationFiles(remaining);setFiles(remaining);
       }
       if(files.horoscope) {
         const {url,error}=await uploadService.uploadFile(files.horoscope,'horoscopes');
         if(error || !url) throw error || new Error('Horoscope upload failed.');
         const result=await verificationService.submitVerificationRequest('horoscope',url,'Horoscope');
-        if(result.error) {await supabase.storage.from('horoscopes').remove([url]);throw result.error;}
+        if(result.error) {await uploadService.removeFile('horoscopes',url);throw result.error;}
         remaining={...remaining,horoscope:null};await saveRegistrationFiles(remaining);setFiles(remaining);
       }
       setFiles(null);setMessage('Your selected files were uploaded and submitted for admin review.');
