@@ -6,13 +6,11 @@ import {
   MapPin, Award, BookOpen, Users 
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { uploadService } from '@/services/upload.service';
-import { galleryService } from '@/services/gallery.service';
 import { useProfileStore } from '@/stores/profileStore';
+import MyPhotosExperience from '@/components/dashboard/MyPhotosExperience';
 import RasiStarDropdowns from '@/components/ui/input/RasiStarDropdowns';
 import ReligionCommunityDropdowns from '@/components/ui/input/ReligionCommunityDropdowns';
 import { validateReligionCommunity } from '@/validations/religion-community.schema';
-import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
 
 export default function Profile() {
   
@@ -55,11 +53,6 @@ export default function Profile() {
     partnerExpectations: ''
   });
 
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [galleryPhotoCount, setGalleryPhotoCount] = useState(0);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
 
@@ -77,8 +70,6 @@ export default function Profile() {
           .maybeSingle();
 
         const currentUserId = userRow?.id || user.id;
-        setUserId(currentUserId);
-
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -120,14 +111,6 @@ export default function Profile() {
             aboutMe: data.about_me || '',
             partnerExpectations: data.partner_expectations || ''
           });
-
-          const { data: gallery, error: galleryError } = await galleryService.getGalleryImages(currentUserId);
-          if (galleryError) throw galleryError;
-          setGalleryPhotoCount(gallery.length);
-          const primaryPhoto = gallery.find((photo) => photo.is_profile_picture) || gallery[0];
-          if (primaryPhoto) {
-            setProfilePhoto(primaryPhoto.thumbnail_url || primaryPhoto.image_url);
-          }
         }
       } catch (e) {
         console.error('Failed to load profile details:', e);
@@ -201,7 +184,6 @@ export default function Profile() {
           throw new Error('Failed to initialize user record: ' + userCreateErr.message);
         }
         currentUserId = newUserRow?.id || user.id;
-        setUserId(currentUserId);
       }
 
       const parts = formData.fullName.split(' ');
@@ -289,37 +271,6 @@ export default function Profile() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.currentTarget;
-    const file = input.files?.[0];
-    if (!file || uploadingPhoto) return;
-    setPhotoError('');
-    setSuccess('');
-    if (!userId) { setPhotoError('Please sign in again before uploading.'); input.value = ''; return; }
-    setUploadingPhoto(true);
-    let uploadedPath: string | null = null;
-    try {
-      const gallery = await galleryService.getGalleryImages(userId);
-      if (gallery.error) throw gallery.error;
-      if (gallery.data.length >= MAX_PROFILE_PHOTOS) throw new Error(`Your profile already has ${MAX_PROFILE_PHOTOS} photos. Delete one in My Gallery before uploading another.`);
-      const {url,thumbnailUrl,error} = await uploadService.uploadFile(file,'photos');
-      if (error || !url) throw error || new Error('Photo upload failed.');
-      uploadedPath = url;
-      if (thumbnailUrl) uploadedPath += `|${thumbnailUrl}`;
-      const attached = await galleryService.uploadGalleryImage(userId,url,true,thumbnailUrl);
-      if (attached.error || !attached.data) throw attached.error || new Error('Photo could not be saved.');
-      uploadedPath = null;
-      setGalleryPhotoCount(gallery.data.length + 1);
-      setProfilePhoto(attached.data.image_url);
-      setSuccess('Profile photo uploaded successfully. Awaiting admin review.');
-    } catch (error) {
-      if (uploadedPath) {
-        await Promise.all(uploadedPath.split('|').map(path => uploadService.removeFile('photos', path)));
-      }
-      setPhotoError(error instanceof Error ? error.message : 'Photo upload failed. Please retry.');
-    } finally { setUploadingPhoto(false); input.value = ''; }
   };
 
   return (
@@ -722,45 +673,10 @@ export default function Profile() {
             </div>
           )}
 
-          {/* TAB 5: PHOTO UPLOAD */}
+          {/* TAB 5: MY PHOTOS */}
           {activeTab === 'photo' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col items-center gap-4 text-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl relative">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handlePhotoUpload}
-                   disabled={uploadingPhoto || galleryPhotoCount >= MAX_PROFILE_PHOTOS}
-                  aria-label="Upload primary profile photo"
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-                
-                {profilePhoto ? (
-                  <img 
-                    src={profilePhoto} 
-                    alt="Upload Preview" 
-                    className="h-28 w-28 rounded-full object-cover border border-gold-400 shadow-md"
-                  />
-                ) : (
-                  <div className="h-28 w-28 rounded-full bg-sandal-100 dark:bg-zinc-800 border-2 border-gold-400/20 flex items-center justify-center font-serif text-3xl font-bold text-maroon-700 dark:text-gold-450 shadow-inner">
-                    RM
-                  </div>
-                )}
-                
-                <div className="flex flex-col gap-1">
-                   <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{uploadingPhoto ? 'Uploading photo…' : galleryPhotoCount >= MAX_PROFILE_PHOTOS ? `You have reached the ${MAX_PROFILE_PHOTOS}-photo limit` : 'Upload primary profile photo'}</span>
-                   <span className="text-xs text-zinc-450 dark:text-zinc-500">{galleryPhotoCount >= MAX_PROFILE_PHOTOS ? 'Delete an existing photo in My Gallery before uploading a newer one.' : 'Requires Admin review to be visible to other members.'}</span>
-                </div>
-              </div>
-
-              {photoError && <p role="alert" className="text-sm text-red-600">{photoError}</p>}
-              <p className="text-xs">JPEG, PNG or WebP · Maximum 5MB · Up to {MAX_PROFILE_PHOTOS} photos. Delete an existing photo before uploading a replacement. Images are resized into private thumbnail/display variants. Manage existing photos in <a href="/dashboard/gallery" className="underline">My Gallery</a>.</p>
-              {/* Additional gallery slots */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="h-24 rounded-2xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 text-xs">
-                  {galleryPhotoCount >= MAX_PROFILE_PHOTOS ? 'Delete one to replace a photo' : 'Add or manage photos in My Gallery'}
-                </div>
-              </div>
+            <div className="animate-in fade-in duration-300">
+              <MyPhotosExperience embedded />
             </div>
           )}
 

@@ -46,7 +46,7 @@ function StatusBadge({ status }: { status: GalleryImage['moderation_status'] }) 
   return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${style}`}>{label}</span>;
 }
 
-export default function MyPhotosExperience() {
+export default function MyPhotosExperience({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuthStore();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<Tab>('photos');
@@ -187,8 +187,8 @@ export default function MyPhotosExperience() {
   const albumPhoto = images.find((image) => image.id !== primaryPhoto?.id);
 
   return (
-    <main className="min-h-[calc(100vh-80px)] bg-zinc-950 px-4 py-7 text-zinc-100 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-5xl">
+    <section className={embedded ? 'rounded-2xl bg-zinc-950 px-4 py-6 text-zinc-100 sm:px-6' : 'min-h-[calc(100vh-80px)] bg-zinc-950 px-4 py-7 text-zinc-100 sm:px-6 sm:py-10'}>
+      <div className={embedded ? 'w-full' : 'mx-auto max-w-5xl'}>
         <header className="mb-6">
           <div className="flex items-center gap-2 text-gold-500"><ImageIcon className="h-6 w-6" aria-hidden="true" /><h1 className="text-2xl font-serif font-bold text-white sm:text-3xl">My Photos</h1></div>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">Manage your profile photos and choose who can view your primary photo and album.</p>
@@ -270,6 +270,6 @@ export default function MyPhotosExperience() {
           </section>
         )}
       </div>
-    </main>
+    </section>
   );
 }
