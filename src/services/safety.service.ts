@@ -77,13 +77,10 @@ export const safetyService = {
 
       if (error) throw error;
 
-      // 3. Delete any existing match requests between these two users
-      await supabase
-        .from('match_requests')
-        .delete()
-        .or(`and(sender_user_id.eq.${currentUserId},receiver_user_id.eq.${blockedUserId}),and(sender_user_id.eq.${blockedUserId},receiver_user_id.eq.${currentUserId})`);
+      // Interest requests are lifetime records. Keep them intact so a block
+      // cannot erase a declined/cancelled history or reopen a send direction.
 
-      // 4. Delete any active chats between these two users (cascade deletes messages)
+      // 3. Delete any active chats between these two users (cascade deletes messages)
       await supabase
         .from('chats')
         .delete()

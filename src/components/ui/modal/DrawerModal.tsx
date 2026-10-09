@@ -56,7 +56,7 @@ export default function DrawerModal({
 
   const positionClasses = isBottom
     ? 'bottom-0 left-0 right-0 max-h-[90vh] rounded-t-3xl border-t'
-    : 'right-0 top-0 bottom-0 w-full max-w-sm border-l';
+    : 'right-0 top-0 bottom-0 w-full max-w-sm max-h-[100dvh] border-l';
 
   return (
     <AnimatePresence>
@@ -78,7 +78,7 @@ export default function DrawerModal({
             animate="visible"
             exit="exit"
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className={`absolute bg-white dark:bg-zinc-900 border-sandal-200 dark:border-zinc-800 shadow-2xl flex flex-col text-left overflow-hidden ${positionClasses}`}
+            className={`absolute min-w-0 bg-white dark:bg-zinc-900 border-sandal-200 dark:border-zinc-800 shadow-2xl flex flex-col text-left overflow-hidden ${positionClasses}`}
           >
             {/* Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-850">

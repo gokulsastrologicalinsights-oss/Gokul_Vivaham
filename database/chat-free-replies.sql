@@ -6,11 +6,11 @@ language sql stable security definer set search_path='' as $$
    and (
      exists(select 1 from public.subscriptions s join public.subscription_plans p on p.id=s.plan_id
        where s.user_id=me.id and s.payment_status='Completed' and s.end_date>now()
-       and (s.start_date is null or s.start_date<=now()) and lower(p.name) ~ '(silver|gold|diamond)')
+       and (s.start_date is null or s.start_date<=now()) and p.messaging_enabled=true)
      or exists(select 1 from public.subscriptions s join public.subscription_plans p on p.id=s.plan_id
        where s.user_id=case when me.id=one then two else one end
        and s.payment_status='Completed' and s.end_date>now()
-       and (s.start_date is null or s.start_date<=now()) and lower(p.name) ~ '(silver|gold|diamond)'
+       and (s.start_date is null or s.start_date<=now()) and p.messaging_enabled=true
        and exists(select 1 from public.chats c join public.chat_messages m on m.chat_id=c.id
          where ((c.user_one=one and c.user_two=two) or (c.user_one=two and c.user_two=one))
          and m.sender_id=s.user_id and m.created_at<s.end_date

@@ -7,7 +7,7 @@ import {
   Users, Star, ShieldAlert, BarChart3, CreditCard, 
   CheckSquare, Settings, Bell, LogOut, Menu, X, 
   ChevronLeft, ChevronRight, Terminal, ShieldCheck, Database,
-  Camera, Calendar, Heart
+  Camera, Calendar, Heart, UserCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -50,10 +50,16 @@ export default function AdminLayout({
 
   const menuItems = [
     { name: 'Document Verification', href: '/admin/approvals', icon: ShieldCheck, desc: 'Review ID Proofs & Horoscopes' },
+    { name: 'Profile Verification Requests', href: '/admin/profile-verifications', icon: UserCheck, desc: 'Review WhatsApp & contact checks' },
     { name: 'System Queue', href: '/admin/dashboard', icon: CheckSquare, desc: 'Profile & Horoscope Queue' },
     { name: 'Photo Moderation', href: '/admin/gallery-moderation', icon: Camera, desc: 'Review Gallery Uploads' },
     { name: 'Monetization Analytics', href: '/admin/analytics', icon: BarChart3, desc: 'Revenue, MRR & Plans' },
-    { name: 'Subscriptions & Billing', href: '/admin/subscriptions', icon: CreditCard, desc: 'Payments & Subscriptions' },
+    { name: 'Membership Plans', href: '/admin/membership?tab=plans', icon: CreditCard, desc: 'Create and control plans' },
+    { name: 'Member Subscriptions', href: '/admin/membership?tab=subscriptions', icon: CreditCard, desc: 'Active and expired access' },
+    { name: 'Assign Plan Access', href: '/admin/membership?tab=assign', icon: CreditCard, desc: 'Grant offline access' },
+    { name: 'Offline Payment Records', href: '/admin/membership?tab=offline', icon: CreditCard, desc: 'Cash, bank, UPI and grants' },
+    { name: 'Subscription History', href: '/admin/membership?tab=history', icon: CreditCard, desc: 'Historical memberships' },
+    { name: 'Membership Audit Logs', href: '/admin/membership?tab=audit', icon: ShieldCheck, desc: 'Admin changes and reasons' },
     { name: 'Consultations', href: '/admin/consultations', icon: Calendar, desc: 'Astrologer Bookings' },
     { name: 'Success Stories', href: '/admin/success-stories', icon: Heart, desc: 'Moderate User Stories' },
     { name: 'Profile Management', href: '/admin/users', icon: Users, desc: 'Create, view, edit and delete' },
@@ -67,7 +73,7 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex w-full min-h-screen bg-background text-foreground font-sans transition-colors overflow-x-hidden">
+    <div className="flex min-h-screen w-full min-w-0 bg-background font-sans text-foreground transition-colors">
       
       {/* SIDEBAR FOR DESKTOP */}
       <aside 
@@ -203,10 +209,10 @@ export default function AdminLayout({
       )}
 
       {/* MAIN CONTAINER */}
-      <div className="flex-1 flex flex-col min-w-0 max-w-full overflow-hidden">
+      <div className="flex min-w-0 max-w-full flex-1 flex-col">
         
         {/* HEADER */}
-        <header className="h-20 border-b border-border bg-card/85 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
+        <header className="sticky top-0 z-40 flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/85 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -256,7 +262,7 @@ export default function AdminLayout({
         </header>
 
         {/* WORKSPACE CONTENT */}
-        <main className="flex-1 overflow-y-auto max-w-full">
+        <main className="min-w-0 max-w-full flex-1 overflow-y-auto">
           {children}
         </main>
 
@@ -264,5 +270,3 @@ export default function AdminLayout({
     </div>
   );
 }
-
-

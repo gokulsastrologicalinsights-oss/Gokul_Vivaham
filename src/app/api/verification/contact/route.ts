@@ -14,8 +14,7 @@ export async function POST(request: Request) {
   const value = email ? user.email : user.phone;
   const confirmed = email ? user.email_confirmed_at : user.phone_confirmed_at;
   if (!value || !confirmed) return reply({ error: 'Complete provider verification first.' }, 409);
-  const updates = email ? { email: value, email_verified: true } : { mobile_number: '+' + value.replace(/^\+/, ''), mobile_verified: true };
-  const { data, error } = await supabaseAdmin.from('users').update(updates).eq('auth_user_id', user.id).eq('status', 'active').is('deleted_at', null).select('id').maybeSingle();
+  const { data, error } = await supabaseAdmin.rpc('sync_member_contact_verification', { actor: user.id, field_name: body.field });
   if (error || !data) return reply({ error: 'Could not save verification status. Please retry.' }, 409);
   return reply({ success: true });
 }

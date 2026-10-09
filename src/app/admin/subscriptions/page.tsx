@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { redirect } from 'next/navigation';
 import { 
   CreditCard, DollarSign, Search, Filter, Calendar, 
   ShieldAlert, Check, X, Clock, ArrowUpRight, 
@@ -10,6 +11,7 @@ import { adminService } from '@/services/admin.service';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminSubscriptionsPage() {
+  redirect('/admin/membership?tab=subscriptions');
   const [activeTab, setActiveTab] = useState<'payments' | 'subscriptions'>('payments');
   const [payments, setPayments] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);

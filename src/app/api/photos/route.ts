@@ -46,10 +46,18 @@ export async function GET(request:Request) {
   if (!photo && !error) ({data:photo,error}=await supabaseAdmin.from('gallery_images').select(photoFields).eq('image_url','/api/photos?path='+path).maybeSingle());
   if(error || !photo) return denied();
   let viewerAccountId=access.user.id;
+  let canViewPremiumPhotos = false;
   if(!access.isAdmin) {
     const {data:viewerAccount,error:viewerError}=await supabaseAdmin.from('users').select('id').eq('auth_user_id',access.user.id).maybeSingle();
     if(viewerError || !viewerAccount) return denied();
     viewerAccountId=viewerAccount.id;
+    const { data: membership } = await supabaseAdmin.from('subscriptions')
+      .select('plan:subscription_plans(photo_viewing_enabled)')
+      .eq('user_id', viewerAccount.id).eq('payment_status', 'Completed')
+      .lte('start_date', new Date().toISOString()).gt('end_date', new Date().toISOString())
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    canViewPremiumPhotos = ['silver','gold','diamond'].includes(access.role)
+      || Boolean((membership?.plan as any)?.photo_viewing_enabled);
   }
   if(photo.user_id!==viewerAccountId && !access.isAdmin) {
     const {data:profile}=await supabaseAdmin.from('profiles').select('visibility,is_suspended,deleted_at,profile_photo_visibility,album_photo_visibility').eq('user_id',photo.user_id).maybeSingle();
@@ -58,7 +66,7 @@ export async function GET(request:Request) {
     const {data:blocked,error:blockError}=await supabaseAdmin.from('blocked_users').select('id').or(`and(blocker_user_id.eq.${viewerAccountId},blocked_user_id.eq.${photo.user_id}),and(blocker_user_id.eq.${photo.user_id},blocked_user_id.eq.${viewerAccountId})`).limit(1);
     if(blockError || blocked?.length) return denied();
     const visibility=photo.is_profile_picture ? profile.profile_photo_visibility : profile.album_photo_visibility;
-    if(visibility==='liked_and_premium' && !['silver','gold','diamond'].includes(access.role)) {
+    if(visibility==='liked_and_premium' && !canViewPremiumPhotos) {
       const {data:liked,error:likedError}=await supabaseAdmin.from('match_requests').select('id')
         .eq('sender_user_id',photo.user_id).eq('receiver_user_id',viewerAccountId)
         .in('status',['pending','accepted']).limit(1);

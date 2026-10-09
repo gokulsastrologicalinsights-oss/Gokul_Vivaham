@@ -45,9 +45,20 @@ export default function VerificationBadges({
     user?.mobile_verified || 
     profile.users?.mobile_verified || 
     false;
+  const isContactVerified = isEmailVerified && isMobileVerified;
 
   // Badge configuration: strictly Gold and Red
   const badgesList = [
+    {
+      id: 'verified_profile',
+      active: isContactVerified,
+      label: 'Verified Profile',
+      icon: CheckCircle,
+      activeColor: 'bg-emerald-600 text-white shadow-sm border-emerald-600/30',
+      activeBg: 'bg-emerald-600 text-white',
+      inactiveColor: 'bg-zinc-800/40 text-muted border-border',
+      tooltip: 'Verified Profile: Mobile number and email address independently verified'
+    },
     {
       id: 'premium',
       active: isPremium,

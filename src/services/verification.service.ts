@@ -1,11 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { syncServerSession } from '@/lib/auth/session-client';
-
-function normalizePhone(value: string) {
-  const phone = value.replace(/[\s()-]/g, '');
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error('Include your country code, for example +919876543210.');
-  return phone;
-}
+import { normalizeVerificationPhone } from '@/lib/verification/phone';
 
 const isMockMode = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -101,10 +96,14 @@ export const verificationService = {
       if (error || !user) throw new Error('Please sign in again.');
       if (field === 'email') {
         if (value.toLowerCase() !== user.email?.toLowerCase()) throw new Error('Verify your current account email.');
-        const { error: sendError } = await supabase.auth.signInWithOtp({ email: user.email!, options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + '/dashboard/verification' } });
+        const { error: sendError } = await supabase.auth.resend({
+          type: 'signup',
+          email: user.email!,
+          options: { emailRedirectTo: window.location.origin + '/dashboard/verification?email_verified=1' },
+        });
         if (sendError) throw sendError;
       } else {
-        const { error: sendError } = await supabase.auth.updateUser({ phone: normalizePhone(value) });
+        const { error: sendError } = await supabase.auth.updateUser({ phone: normalizeVerificationPhone(value) });
         if (sendError) throw sendError;
       }
       return { error: null };
@@ -119,9 +118,9 @@ export const verificationService = {
       let result;
       if (field === 'email') {
         if (value.toLowerCase() !== user.email?.toLowerCase()) throw new Error('Verify your current account email.');
-        result = await supabase.auth.verifyOtp({ email: user.email!, token, type: 'email' });
+        result = await supabase.auth.verifyOtp({ email: user.email!, token, type: 'signup' });
       } else {
-        result = await supabase.auth.verifyOtp({ phone: normalizePhone(value), token, type: 'phone_change' });
+        result = await supabase.auth.verifyOtp({ phone: normalizeVerificationPhone(value), token, type: 'phone_change' });
       }
       if (result.error) throw result.error;
       if (result.data.user?.id !== user.id) throw new Error('Verification belongs to a different account.');

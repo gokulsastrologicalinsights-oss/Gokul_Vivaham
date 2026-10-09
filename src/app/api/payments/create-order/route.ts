@@ -58,6 +58,7 @@ export async function POST(req: Request) {
         .from('subscription_plans')
         .select('*')
         .eq('id', planId)
+        .eq('is_active', true)
         .maybeSingle();
 
       if (planErr || !plan) {
@@ -203,4 +204,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
-

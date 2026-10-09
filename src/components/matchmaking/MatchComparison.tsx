@@ -207,13 +207,12 @@ export default function MatchComparison({ shortlisted, onRemove, unlockedProfile
                 >
                   View details
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => alert(`Connection request sent to ${profile.name}!`)}
-                  className="flex-1 py-2 rounded-lg luxury-gradient text-white text-xs font-semibold hover:opacity-90 shadow transition-all cursor-pointer flex items-center justify-center gap-1"
+                <Link
+                  href={`/dashboard/matches?id=${profile.id}`}
+                  className="flex-1 rounded-lg luxury-gradient py-2 text-center text-xs font-semibold text-white shadow transition-all hover:opacity-90"
                 >
-                  Connect
-                </button>
+                  Connect from Profile
+                </Link>
               </div>
             </div>
           ))}

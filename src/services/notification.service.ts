@@ -15,10 +15,17 @@ export const notificationService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+      const currentUserId = userRow?.id || user.id;
+
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUserId)
         .order('created_at', { ascending: false });
       return { data: data || [], error };
     } catch (err: any) {

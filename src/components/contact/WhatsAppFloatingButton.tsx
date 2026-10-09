@@ -16,7 +16,7 @@ export function WhatsAppFloatingButton() {
       href={contactConfig.whatsapp.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-24 lg:bottom-6 right-6 z-50 flex items-center justify-center p-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group border border-emerald-500/20 cursor-pointer"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-600 p-3.5 text-white shadow-2xl transition-all duration-300 group hover:scale-110 hover:bg-emerald-700 active:scale-95 cursor-pointer lg:bottom-6 lg:right-6"
       aria-label="Chat with us on WhatsApp"
     >
       <span className="absolute inset-0 rounded-full bg-emerald-600 animate-ping opacity-20 group-hover:animate-none pointer-events-none" />
@@ -29,4 +29,3 @@ export function WhatsAppFloatingButton() {
     </a>
   );
 }
-

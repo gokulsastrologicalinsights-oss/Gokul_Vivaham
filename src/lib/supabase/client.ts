@@ -117,6 +117,15 @@ const mockAuth = {
     return { data: { message: 'Demo OTP sent' }, error: null };
   },
 
+  resend: async ({ type, email }: any) => {
+    return { data: { message: `Demo ${type} verification email sent to ${email}` }, error: null };
+  },
+
+  updateUser: async ({ phone }: any) => {
+    if (currentSession?.user) currentSession.user.phone = phone;
+    return { data: { user: currentSession?.user || null }, error: null };
+  },
+
   verifyOtp: async (params: any) => {
     const token = params.token;
     if (token === '1234' || token === '123456') {

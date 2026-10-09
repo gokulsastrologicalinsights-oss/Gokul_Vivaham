@@ -56,14 +56,14 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 w-full glass-panel border-b border-border shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20">
+      <div className="site-container">
+        <div className="flex min-h-20 items-center justify-between gap-4 py-2">
           {/* Logo & Branding */}
-          <div className="flex items-center">
+          <div className="flex min-w-0 items-center">
             <Link href="/" className="flex flex-col justify-center select-none group">
               <div className="flex items-center gap-1.5">
                 <Heart className="h-6 w-6 text-primary fill-primary group-hover:scale-110 transition-transform duration-300" />
-                <span className="text-xl md:text-2xl font-serif font-bold text-primary leading-none">
+                <span className="truncate text-xl font-serif font-bold text-primary leading-none sm:text-2xl">
                   Gokul Vivaham
                 </span>
               </div>
@@ -74,7 +74,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-6">
+          <div className="hidden min-w-0 items-center gap-4 lg:flex xl:gap-6">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -105,7 +105,7 @@ export default function Navbar() {
             <ThemeToggle />
 
             {user ? (
-              <div className="flex items-center space-x-4">
+            <div className="flex min-w-0 items-center gap-4">
                 <Link
                   href="/dashboard"
                   className="flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary transition-colors"
@@ -122,7 +122,7 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-3">
                 <Link
                   href="/login"
                   className="text-sm font-bold text-foreground hover:text-primary px-3 py-2 transition-colors"
@@ -258,4 +258,3 @@ export default function Navbar() {
     </nav>
   );
 }
-

@@ -33,7 +33,7 @@ export async function resolveAccess(token: string | undefined): Promise<Access |
     }
     const { data: subscription, error: subscriptionError } = await client.from('subscriptions')
       .select('plan:subscription_plans(name)').eq('user_id', account.id)
-      .eq('payment_status', 'Completed').gt('end_date', new Date().toISOString())
+      .eq('payment_status', 'Completed').lte('start_date', new Date().toISOString()).gt('end_date', new Date().toISOString())
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (subscriptionError) return null;
     const plan = subscription?.plan as unknown as { name: string } | null;

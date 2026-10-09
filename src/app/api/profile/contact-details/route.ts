@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { SUBSCRIPTION_PLANS } from '@/constants/payments';
-
-/** Helper: resolve plan key from plan name string */
-function resolvePlanKey(planName: string): string {
-  const n = planName.toLowerCase();
-  if (n.includes('diamond')) return 'DIAMOND';
-  if (n.includes('gold')) return 'GOLD';
-  if (n.includes('silver')) return 'SILVER';
-  return 'FREE';
-}
 
 export async function POST(req: Request) {
   try {
@@ -95,51 +85,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6. Check if current user is premium
-    const { data: profileRow } = await supabaseAdmin
-      .from('profiles')
-      .select('is_premium')
-      .eq('user_id', currentUserId)
-      .maybeSingle();
-
-    const isPremiumProfile = profileRow?.is_premium || false;
-    const isPremiumRole = currentUserRow.role !== 'user' && currentUserRow.role !== 'free';
-    const isPremium = isPremiumProfile || isPremiumRole;
-
-    if (!isPremium) {
-      return NextResponse.json(
-        {
-          error: 'Premium subscription required to view contact details',
-          upgrade_required: true,
-        },
-        { status: 403 }
-      );
-    }
-
-    // 6. Enforce plan limits for non-admin roles
+    // Enforce the current database plan, not the profile badge or a client role.
     const isAdmin = ['admin', 'super_admin', 'moderator'].includes(currentUserRow.role);
 
     if (!isAdmin) {
       const { data: activeSub } = await supabaseAdmin
         .from('subscriptions')
-        .select('*, plan:subscription_plans(name)')
+        .select('id,start_date,end_date,plan:subscription_plans(name,contact_view_limit,features,contact_viewing_enabled)')
         .eq('user_id', currentUserId)
         .eq('payment_status', 'Completed')
+        .lte('start_date', new Date().toISOString())
         .gt('end_date', new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (!activeSub) {
+      const plan = activeSub?.plan as any;
+      const features = (plan?.features || {}) as Record<string, any>;
+      const contactsLimit = Number(plan?.contact_view_limit ?? features.contacts_limit ?? 0);
+      if (!activeSub || !plan || plan.contact_viewing_enabled !== true || contactsLimit <= 0) {
         return NextResponse.json(
-          { error: 'No active subscription plan record found. Please renew your plan.' },
+          { error: 'Your current plan does not include contact viewing. Please renew or upgrade your plan.', upgrade_required: true },
           { status: 403 }
         );
       }
-
-      // Derive contact limit from constants (single source of truth)
-      const planKey = resolvePlanKey(activeSub.plan?.name || '');
-      const contactsLimit = SUBSCRIPTION_PLANS[planKey]?.entitlements?.contacts_limit ?? 0;
 
       const { data: logs } = await supabaseAdmin
         .from('activity_logs')
@@ -155,23 +124,11 @@ export async function POST(req: Request) {
       const hasViewedAlready = viewedUserIds.has(targetUserId);
 
       if (!hasViewedAlready) {
-        // Zero-limit plans (Startup) cannot view contacts
-        if (contactsLimit === 0) {
-          return NextResponse.json(
-            {
-              error:
-                'Your current plan does not include contact viewing. Please upgrade to Silver or above.',
-              upgrade_required: true,
-            },
-            { status: 403 }
-          );
-        }
-
         // Limit exhausted
         if (viewedUserIds.size >= contactsLimit) {
           return NextResponse.json(
             {
-              error: `You have reached the maximum limit of ${contactsLimit} contact views for your ${activeSub.plan?.name || 'plan'}.`,
+              error: `You have reached the maximum limit of ${contactsLimit} contact views for your ${plan?.name || 'plan'}.`,
               upgrade_required: true,
               contacts_used: viewedUserIds.size,
               contacts_remaining: 0,

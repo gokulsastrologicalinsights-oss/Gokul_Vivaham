@@ -21,8 +21,8 @@ export default function MobileBottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden glass-panel border-t border-sandal-200/30 dark:border-zinc-800/60 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300">
-      <div className="flex justify-around items-center h-16 max-w-md mx-auto px-4">
+    <div className="fixed inset-x-0 bottom-0 z-50 pb-[env(safe-area-inset-bottom)] lg:hidden glass-panel border-t border-sandal-200/30 dark:border-zinc-800/60 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300">
+      <div className="mx-auto flex h-16 max-w-md items-center justify-around px-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = pathname === tab.href || (tab.href !== '/' && pathname?.startsWith(tab.href));

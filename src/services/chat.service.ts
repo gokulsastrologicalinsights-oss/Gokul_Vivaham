@@ -58,8 +58,18 @@ export const chatService = {
           // Get profile with verification states
           const { data: profile } = await supabase
             .from('profiles')
-            .select('first_name, last_name, age, is_verified, is_premium, id_verification_status, horoscope_verification_status, users(email_verified, mobile_verified)')
+            .select('first_name, last_name, profile_id, image_url, age, is_verified, is_premium, id_verification_status, horoscope_verification_status, users(email_verified, mobile_verified)')
             .eq('user_id', otherUserId)
+            .maybeSingle();
+
+          // Profile photos are still permission-filtered by the existing gallery RLS.
+          // Use the profile image first, then fall back to the approved profile picture.
+          const { data: galleryPhoto } = await supabase
+            .from('gallery_images')
+            .select('image_url, thumbnail_url')
+            .eq('user_id', otherUserId)
+            .eq('is_profile_picture', true)
+            .limit(1)
             .maybeSingle();
 
           // Get last message
@@ -83,6 +93,8 @@ export const chatService = {
             last_message: lastMsg ? lastMsg.message : 'No messages yet',
             updated_at: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
             other_user_id: otherUserId,
+            profile_id: profile?.profile_id || null,
+            profile_photo_url: profile?.image_url || galleryPhoto?.thumbnail_url || galleryPhoto?.image_url || null,
             // verification states
             is_verified: profile?.is_verified || false,
             is_premium: profile?.is_premium || false,
@@ -159,8 +171,14 @@ export const chatService = {
     if (!ids.length) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    const currentUserId = userRow?.id || user.id;
     const { error } = await supabase.from('chat_messages').update({ is_seen: true })
-      .eq('chat_id', channelId).in('id', ids).neq('sender_id', user.id).eq('is_seen', false);
+      .eq('chat_id', channelId).in('id', ids).neq('sender_id', currentUserId).eq('is_seen', false);
     if (error) throw error;
   },
 

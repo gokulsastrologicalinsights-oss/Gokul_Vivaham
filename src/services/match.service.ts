@@ -155,82 +155,28 @@ export const matchService = {
         ], error: null };
       }
 
-      let currentUserId: string | null = null;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: userRow } = await supabase
-            .from('users')
-            .select('id')
-            .eq('auth_user_id', user.id)
-            .maybeSingle();
-          currentUserId = userRow?.id || user.id;
-        }
-      } catch (err) {
-        console.error('Error getting user in getMatches:', err);
-      }
+      const params = new URLSearchParams();
+      if (filters?.gender) params.set('gender', filters.gender);
+      if (filters?.ageMin) params.set('ageMin', String(filters.ageMin));
+      if (filters?.ageMax) params.set('ageMax', String(filters.ageMax));
+      if (filters?.religion) params.set('religion', filters.religion);
+      if (filters?.caste) params.set('caste', filters.caste);
+      if (filters?.rasi) params.set('rasi', filters.rasi);
+      if (filters?.star) params.set('star', filters.star);
+      if (filters?.padam) params.set('padam', filters.padam);
+      if (filters?.location) params.set('location', filters.location);
+      const serverResponse = await fetch(`/api/matches?${params.toString()}`, { cache: 'no-store' });
+      const serverResult = await serverResponse.json();
+      if (!serverResponse.ok) return { data: [], error: new Error(serverResult.error || 'Could not load matches.') };
+      if (!serverResult.profiles) return { data: [], error: null };
+      const data = serverResult.profiles;
 
-      // 0. Fetch blocklist to exclude blocked candidates
-      let blockedUserIds: string[] = [];
-      if (currentUserId) {
-        const { data: blocks } = await supabase
-          .from('blocked_users')
-          .select('blocker_user_id, blocked_user_id')
-          .or(`blocker_user_id.eq.${currentUserId},blocked_user_id.eq.${currentUserId}`);
-        
-        if (blocks) {
-          blockedUserIds = blocks.map((b: any) => b.blocker_user_id === currentUserId ? b.blocked_user_id : b.blocker_user_id);
-        }
-      }
-
-      let query = supabase.from('profiles').select('*, users(email_verified, mobile_verified)');
-      if (currentUserId) {
-        query = query.neq('user_id', currentUserId);
-      }
-
-      if (filters) {
-        if (filters.gender) query = query.eq('gender', filters.gender);
-        if (filters.ageMin) query = query.gte('age', filters.ageMin);
-        if (filters.ageMax) query = query.lte('age', filters.ageMax);
-        if (filters.religion) query = query.eq('religion', filters.religion);
-        if (filters.caste) query = query.ilike('caste', `%${filters.caste}%`);
-        if (filters.rasi) query = query.eq('rasi', filters.rasi);
-        if (filters.star) query = query.ilike('nakshatra', `%${filters.star}%`);
-        if (filters.padam) query = query.eq('padam', filters.padam);
-        if (filters.location) query = query.ilike('city', `%${filters.location}%`);
-      }
-
+      const currentUserId: string | null = null;
       // Fetch current user's profile to compute compatibility score dynamically
       let currentUserProfile: any = null;
-      if (currentUserId) {
-        const { data: currentProf } = await supabase
-          .from('profiles')
-          .select('rasi, nakshatra, padam')
-          .eq('user_id', currentUserId)
-          .maybeSingle();
-        currentUserProfile = currentProf;
-      }
-
-      // Fetch current user's partner preferences if filters are not provided
       let preferredReligion = '';
       let preferredCaste = '';
-      if (!filters && currentUserId) {
-        try {
-          const { data: prefs } = await supabase
-            .from('partner_preferences')
-            .select('religion, caste')
-            .eq('user_id', currentUserId)
-            .maybeSingle();
-          if (prefs) {
-            preferredReligion = prefs.religion || '';
-            preferredCaste = prefs.caste || '';
-          }
-        } catch (prefErr) {
-          console.error('Error fetching partner preferences for match scoring:', prefErr);
-        }
-      }
-
-      const { data, error } = await query;
+      const error = null;
       
       // format profiles data to standard view structure
       const formatted = (data as any)?.map((profile: any) => {
@@ -290,7 +236,6 @@ export const matchService = {
 
       // Filter out invalid combinations and blocked users
       const validProfiles = formatted ? formatted.filter((p: any) => {
-        if (blockedUserIds.includes(p.user_id)) return false;
         if (p.religion && p.caste) {
           return isValidCombination(p.religion, p.caste);
         }
@@ -306,40 +251,50 @@ export const matchService = {
   async sendRequest(receiverUserId: string) {
     try {
       if (isMockMode()) {
-        return { data: { success: true }, error: null };
+        return { data: { id: `mock-${receiverUserId}`, status: 'pending', receiver_user_id: receiverUserId }, error: null };
       }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const response = await fetch('/api/interests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverUserId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { data: result.request || null, error: new Error(result.error || 'Could not send interest request.') };
+      return { data: result.request, error: null };
+    } catch (err: any) {
+      return { data: null, error: err };
+    }
+  },
 
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+  async getRequestStatuses(recipientUserIds: string[]) {
+    try {
+      if (isMockMode()) return { data: {}, error: null };
+      if (recipientUserIds.length === 0) return { data: {}, error: null };
+      const response = await fetch(`/api/interests?recipientUserIds=${encodeURIComponent(recipientUserIds.join(','))}`, { cache: 'no-store' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { data: {}, error: new Error(result.error || 'Could not load interest status.') };
+      return { data: result.statuses || {}, error: null };
+    } catch (err: any) {
+      return { data: {}, error: err };
+    }
+  },
 
-      const currentUserId = userRow?.id || user.id;
+  async getRequestStatus(recipientUserId: string) {
+    const result = await this.getRequestStatuses([recipientUserId]);
+    return { data: result.data?.[recipientUserId] || null, error: result.error };
+  },
 
-      // Check blocks
-      const { data: block } = await supabase
-        .from('blocked_users')
-        .select('id')
-        .or(`and(blocker_user_id.eq.${currentUserId},blocked_user_id.eq.${receiverUserId}),and(blocker_user_id.eq.${receiverUserId},blocked_user_id.eq.${currentUserId})`)
-        .maybeSingle();
-
-      if (block) {
-        throw new Error('Cannot send connection request to a blocked member.');
-      }
-
-      const { data, error } = await supabase
-        .from('match_requests')
-        .insert({
-          sender_user_id: currentUserId,
-          receiver_user_id: receiverUserId,
-          status: 'pending'
-        })
-        .select()
-        .single();
-      return { data, error };
+  async cancelRequest(requestId: string) {
+    try {
+      if (isMockMode()) return { data: { id: requestId, status: 'cancelled' }, error: null };
+      const response = await fetch('/api/interests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, status: 'cancelled' }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { data: result.request || null, error: new Error(result.error || 'Could not cancel interest request.') };
+      return { data: result.request, error: null };
     } catch (err: any) {
       return { data: null, error: err };
     }
@@ -402,15 +357,16 @@ export const matchService = {
   async respondToRequest(requestId: string, status: 'accepted' | 'declined') {
     try {
       if (isMockMode()) {
-        return { data: { success: true }, error: null };
+        return { data: { id: requestId, status }, error: null };
       }
-      const { data, error } = await supabase
-        .from('match_requests')
-        .update({ status })
-        .eq('id', requestId)
-        .select()
-        .single();
-      return { data, error };
+      const response = await fetch('/api/interests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, status }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { data: result.request || null, error: new Error(result.error || 'Could not update interest request.') };
+      return { data: result.request, error: null };
     } catch (err: any) {
       return { data: null, error: err };
     }

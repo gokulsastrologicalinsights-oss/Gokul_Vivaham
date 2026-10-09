@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useFeaturedProfiles } from '@/hooks/useFeaturedProfiles';
-import { Star, Sparkles, MapPin, Award, User, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { Star, Sparkles, MapPin, Award, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import InterestActionButton from '@/components/matchmaking/InterestActionButton';
 
 export default function FeaturedProfilesCarousel() {
   const { data: featured = [], isLoading: loading, error } = useFeaturedProfiles();
@@ -139,12 +140,11 @@ export default function FeaturedProfilesCarousel() {
                   >
                     View Details
                   </Link>
-                  <button
-                    onClick={() => alert(`Connect request sent to ${member.name}!`)}
-                    className="px-4 py-2 rounded-lg luxury-gradient text-white text-xs font-semibold hover:opacity-90 shadow transition-all cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Heart className="h-3.5 w-3.5 fill-white shrink-0" /> Connect
-                  </button>
+                  <InterestActionButton
+                    recipientUserId={member.userId}
+                    className="rounded-lg luxury-gradient px-4 py-2 text-xs font-semibold text-white shadow transition-all hover:opacity-90"
+                    compact
+                  />
                 </div>
               </div>
             ))}

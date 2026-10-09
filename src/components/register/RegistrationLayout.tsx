@@ -2,5 +2,5 @@
 import { ReactNode } from 'react';
 
 export default function RegistrationLayout({ children }: { children: ReactNode }) {
-  return <div className="max-w-2xl mx-auto py-8">{children}</div>;
+  return <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-8">{children}</div>;
 }

@@ -11,6 +11,8 @@ import MembershipCard from '@/components/dashboard/MembershipCard';
 import { supabase } from '@/lib/supabase';
 import { matchService } from '@/services/match.service';
 import FeaturedProfilesCarousel from '@/components/home/FeaturedProfilesCarousel';
+import InterestActionButton from '@/components/matchmaking/InterestActionButton';
+import ProfileVerificationBanner from '@/components/verification/ProfileVerificationBanner';
 
 export default function UserDashboard() {
   
@@ -149,6 +151,8 @@ export default function UserDashboard() {
           View All Matches
         </Link>
       </div>
+
+      <ProfileVerificationBanner />
 
       {/* MEMBERSHIP CARD */}
       <MembershipCard />
@@ -302,12 +306,11 @@ export default function UserDashboard() {
                 >
                   View Profile
                 </Link>
-                <button
-                  onClick={() => alert(`Interest request sent to ${match.name}!`)}
-                  className="flex-1 py-2 rounded-lg luxury-gradient text-white text-xs font-semibold hover:opacity-90 shadow transition-all cursor-pointer flex items-center justify-center gap-1"
-                >
-                  <Heart className="h-3 w-3 fill-white" /> Connect
-                </button>
+                <InterestActionButton
+                  recipientUserId={match.user_id || match.profile_uuid || match.id}
+                  className="flex-1 rounded-lg luxury-gradient px-3 py-2 text-xs font-semibold text-white shadow transition-all hover:opacity-90"
+                  compact
+                />
               </div>
 
             </div>
@@ -322,4 +325,3 @@ export default function UserDashboard() {
     </div>
   );
 }
-

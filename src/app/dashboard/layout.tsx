@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { SupportSection } from '@/components/contact/SupportSection';
+import ChatDock from '@/components/chat/ChatDock';
 
 import PendingRegistrationUploads from '@/components/register/PendingRegistrationUploads';
 
@@ -31,7 +32,7 @@ export default function DashboardLayout({
         // Resolve user's database ID from auth_user_id
         const { data: userRow } = await supabase
           .from('users')
-          .select('id')
+          .select('id,email_verified,mobile_verified')
           .eq('auth_user_id', user.id)
           .maybeSingle();
 
@@ -44,7 +45,7 @@ export default function DashboardLayout({
           .maybeSingle();
 
         if (data) {
-          setProfile(data);
+          setProfile({ ...data, contact_verified: Boolean(userRow?.email_verified && userRow?.mobile_verified) });
         } else {
           // Fallback if profile row not created yet
           const nameParts = user.user_metadata?.full_name?.split(' ') || ['Member'];
@@ -53,7 +54,8 @@ export default function DashboardLayout({
             last_name: nameParts.slice(1).join(' ') || '',
             profile_id: 'GVV-PENDING',
             is_premium: false,
-            is_verified: false
+            is_verified: false,
+            contact_verified: Boolean(userRow?.email_verified && userRow?.mobile_verified)
           });
         }
 
@@ -142,11 +144,11 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex-1 w-full bg-surface/30 py-8 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div className="flex-1 w-full bg-surface/30 py-6 transition-colors sm:py-8">
+      <div className="site-container grid grid-cols-1 gap-6 lg:grid-cols-[minmax(15rem,17rem)_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[18rem_minmax(0,1fr)]">
         
         {/* Left Sidebar Menu */}
-        <aside className="lg:col-span-3 flex flex-col gap-4">
+        <aside className="flex min-w-0 flex-col gap-4">
           <div className="bg-card text-card-foreground rounded-3xl p-5 shadow-md border border-border flex flex-col gap-6">
             
             {/* Quick Profile Summary in Sidebar */}
@@ -165,7 +167,7 @@ export default function DashboardLayout({
               <div className="flex flex-col gap-0.5">
                 <span className="text-base font-serif font-bold text-foreground flex items-center justify-center gap-1">
                   {fullName}
-                  {profile?.is_verified && (
+                  {profile?.contact_verified && (
                     <span className="w-3.5 h-3.5 bg-emerald-600 rounded-full flex items-center justify-center text-[8px] font-bold text-white uppercase tracking-normal" title="Verified Member">✓</span>
                   )}
                 </span>
@@ -206,12 +208,13 @@ export default function DashboardLayout({
         </aside>
 
         {/* Right Content Area */}
-        <section className="lg:col-span-9 flex flex-col w-full">
+        <section className="flex min-w-0 w-full flex-col lg:pr-72">
           <PendingRegistrationUploads />
           {children}
         </section>
 
       </div>
+      <ChatDock />
     </div>
   );
 }

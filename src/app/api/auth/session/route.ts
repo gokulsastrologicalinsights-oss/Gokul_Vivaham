@@ -8,7 +8,22 @@ function clearCookies(response: NextResponse) {
   }
   return response;
 }
-function sameOrigin(request: Request) { return request.headers.get('origin') === new URL(request.url).origin; }
+function sameOrigin(request: Request) {
+  const origin = request.headers.get('origin');
+  if (!origin) return false;
+
+  const originUrl = new URL(origin);
+  const requestUrl = new URL(request.url);
+  if (originUrl.origin === requestUrl.origin) return true;
+
+  const localHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+  return process.env.NODE_ENV !== 'production'
+    && originUrl.protocol === 'http:'
+    && requestUrl.protocol === 'http:'
+    && originUrl.port === requestUrl.port
+    && localHosts.has(originUrl.hostname)
+    && localHosts.has(requestUrl.hostname);
+}
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const token = request.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { SUBSCRIPTION_PLANS } from '@/constants/payments';
 
 /**
  * GET /api/entitlements/usage
@@ -36,26 +35,27 @@ export async function GET() {
     // 3. Fetch active subscription
     const { data: activeSub } = await supabaseAdmin
       .from('subscriptions')
-      .select('*, plan:subscription_plans(name)')
+      .select('id,start_date,end_date,plan:subscription_plans(id,name,features,contact_view_limit,messaging_enabled,photo_viewing_enabled,premium_badge_eligible,search_enabled)')
       .eq('user_id', currentUserId)
       .eq('payment_status', 'Completed')
+      .lte('start_date', new Date().toISOString())
       .gt('end_date', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    // 4. Derive plan entitlements from constants (single source of truth)
-    const planName = activeSub?.plan?.name?.toLowerCase() || '';
-    let planKey = 'FREE';
-    if (planName.includes('diamond')) planKey = 'DIAMOND';
-    else if (planName.includes('gold')) planKey = 'GOLD';
-    else if (planName.includes('silver')) planKey = 'SILVER';
+    // Entitlements come from the active database plan. A plan name is only a
+    // label and is never used as an authorization signal.
+    const plan = activeSub?.plan as any;
+    const features = (plan?.features || {}) as Record<string, any>;
+    const limits = {
+      contacts_limit: Number(plan?.contact_view_limit ?? features.contacts_limit ?? 0),
+      horoscope_reports_limit: Number(features.horoscope_reports_limit ?? 0),
+      consultations_limit: Number(features.consultations_limit ?? 0),
+    };
 
-    const planDef = SUBSCRIPTION_PLANS[planKey];
-    const limits = planDef.entitlements;
-
-    // 5. If no active paid sub, return zero usage with zero limits (Startup)
-    if (!activeSub || planKey === 'FREE') {
+    // If no active subscription exists, return the zero-entitlement baseline.
+    if (!activeSub || !plan) {
       return NextResponse.json({
         plan_name: 'Startup Plan',
         plan_key: 'FREE',
@@ -113,8 +113,8 @@ export async function GET() {
     ).length;
 
     return NextResponse.json({
-      plan_name: planDef.name,
-      plan_key: planKey,
+        plan_name: plan.name,
+        plan_key: plan.id,
       days_remaining: daysRemaining,
       contacts_used: contactsUsed,
       contacts_remaining: Math.max(0, limits.contacts_limit - contactsUsed),
@@ -125,6 +125,10 @@ export async function GET() {
       consultations_used: consultationsUsed,
       consultations_remaining: Math.max(0, limits.consultations_limit - consultationsUsed),
       consultations_limit: limits.consultations_limit,
+      messaging_enabled: Boolean(plan.messaging_enabled),
+      photo_viewing_enabled: Boolean(plan.photo_viewing_enabled),
+      premium_badge_eligible: Boolean(plan.premium_badge_eligible),
+      search_enabled: Boolean(plan.search_enabled),
     });
   } catch (err: any) {
     console.error('Entitlements usage API error:', err);

@@ -96,7 +96,7 @@ export default function RootLayout({
               <LanguageProvider>
                 <NotificationProvider>
                   <Navbar />
-                  <main className="flex-1 flex flex-col w-full pb-16 lg:pb-0">{children}</main>
+                  <main className="flex min-w-0 flex-1 w-full flex-col pb-16 lg:pb-0">{children}</main>
                   <Footer />
                   <MobileBottomNav />
                   <WhatsAppFloatingButton />

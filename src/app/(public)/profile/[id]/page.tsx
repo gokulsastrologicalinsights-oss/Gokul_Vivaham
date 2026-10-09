@@ -12,6 +12,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import VerificationBadges from '@/components/ui/VerificationBadges';
 import { safetyService } from '@/services/safety.service';
+import { matchService } from '@/services/match.service';
+import RequestSentConfirmation from '@/components/ui/RequestSentConfirmation';
 import UpgradeModal from '@/components/ui/UpgradeModal';
 import { useCheckout } from '@/hooks/useCheckout';
 import { Lock, Unlock } from 'lucide-react';
@@ -26,12 +28,13 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
   const [isShortlisted, setIsShortlisted] = useState(false);
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
   const [activeSlide, setActiveSlide] = useState(0);
-  const [interestSent, setInterestSent] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [reported, setReported] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [connectionRequestId, setConnectionRequestId] = useState<string | null>(null);
+  const [requestActionInProgress, setRequestActionInProgress] = useState(false);
+  const [showRequestConfirmation, setShowRequestConfirmation] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [contactDetails, setContactDetails] = useState<{ email: string; phone: string; premiumLocked?: boolean; unlocked?: boolean }>({
     email: '••••••@••••.com',
     phone: '+91 ••••• •••••',
@@ -93,7 +96,6 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
             .eq('auth_user_id', user.id)
             .maybeSingle();
           resolvedUserId = userRow?.id || user.id;
-          setCurrentUserId(resolvedUserId);
 
           const isProfilePremium = (userRow as any)?.profiles?.is_premium || false;
           const isRolePremium = userRow?.role !== 'user' && userRow?.role !== 'free';
@@ -122,27 +124,12 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
             return;
           }
 
-          // Check connection request status
-          const { data: req1 } = await supabase
-            .from('match_requests')
-            .select('*')
-            .eq('sender_user_id', resolvedUserId)
-            .eq('receiver_user_id', profileData.user_id)
-            .maybeSingle();
-          
-          const { data: req2 } = await supabase
-            .from('match_requests')
-            .select('*')
-            .eq('sender_user_id', profileData.user_id)
-            .eq('receiver_user_id', resolvedUserId)
-            .maybeSingle();
-
-          const request = req1 || req2;
+          // Request state is directional: only this member's request to the
+          // viewed member controls the sender's button.
+          const { data: request } = await matchService.getRequestStatus(profileData.user_id);
           if (request) {
+            setConnectionRequestId(request.id);
             setConnectionStatus(request.status);
-            if (request.status === 'accepted') {
-              setInterestSent(true);
-            }
           }
         }
 
@@ -214,7 +201,7 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
     };
 
     fetchProfileDetails();
-  }, [id, connectionStatus]);
+  }, [id]);
 
   const handleConnect = async () => {
     if (!currentUser || !profile) {
@@ -223,30 +210,59 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
       return;
     }
     
+    if (connectionStatus || requestActionInProgress) return;
+    setRequestActionInProgress(true);
     try {
-      const { error } = await supabase
-        .from('match_requests')
-        .insert({
-          sender_user_id: currentUserId,
-          receiver_user_id: profile.user_id,
-          status: 'pending'
-        });
-
+      const { data, error } = await matchService.sendRequest(profile.user_id);
       if (error) {
+        const latest = await matchService.getRequestStatus(profile.user_id);
+        if (latest.data) {
+          setConnectionStatus(latest.data.status);
+        }
         alert('Failed to send connection request: ' + error.message);
       } else {
-        setInterestSent(true);
-        setConnectionStatus('pending');
-        alert(`Connection interest request sent to ${profile.first_name || 'Candidate'}!`);
+        setConnectionRequestId(data?.id || null);
+        setConnectionStatus(data?.status || 'pending');
+        setShowRequestConfirmation(true);
       }
     } catch (e: any) {
       alert('Error connecting: ' + e.message);
+    } finally {
+      setRequestActionInProgress(false);
     }
   };
 
+  const handleCancelRequest = async () => {
+    if (!connectionStatus || connectionStatus !== 'pending' || requestActionInProgress) return;
+    if (!window.confirm('Cancel this pending interest request? You will not be able to send another request to this member.')) return;
+    if (!connectionRequestId) return;
+    setRequestActionInProgress(true);
+    try {
+      const { data, error } = await matchService.cancelRequest(connectionRequestId);
+      if (error) {
+        alert('Failed to cancel request: ' + error.message);
+      } else {
+        setConnectionStatus(data?.status || 'cancelled');
+        alert('Request Cancelled');
+      }
+    } finally {
+      setRequestActionInProgress(false);
+    }
+  };
+
+  const requestLabel = connectionStatus === 'pending'
+    ? 'Request Sent'
+    : connectionStatus === 'accepted'
+      ? 'Interest Accepted'
+      : connectionStatus === 'declined'
+        ? 'Interest Declined'
+        : connectionStatus === 'cancelled'
+          ? 'Request Already Sent'
+          : 'Send Interest';
+
   const handleBlockUser = async () => {
     if (!currentUser || !profile) return;
-    const confirmBlock = confirm(`Are you sure you want to block ${profile.first_name || 'this member'}? This will also remove any chat history or pending requests between you. Proceed?`);
+    const confirmBlock = confirm(`Are you sure you want to block ${profile.first_name || 'this member'}? This will remove chat access while preserving interest-request history. Proceed?`);
     if (!confirmBlock) return;
 
     try {
@@ -456,11 +472,20 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
 
             <button
               onClick={handleConnect}
-              disabled={interestSent}
-              className="px-6 h-10 rounded-full luxury-gradient text-white text-xs font-semibold uppercase tracking-widest hover:opacity-90 shadow-md transition-all cursor-pointer disabled:opacity-50"
+              disabled={Boolean(connectionStatus) || requestActionInProgress}
+              className="px-6 h-10 rounded-full luxury-gradient text-white text-xs font-semibold uppercase tracking-widest hover:opacity-90 shadow-md transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {connectionStatus === 'pending' ? 'Pending Acceptance' : interestSent ? 'Connected ✓' : 'Connect Interest'}
+              {requestActionInProgress && !connectionStatus ? 'Sending…' : requestLabel}
             </button>
+            {connectionStatus === 'pending' && (
+              <button
+                onClick={handleCancelRequest}
+                disabled={requestActionInProgress}
+                className="px-4 h-10 rounded-full border border-zinc-300 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50"
+              >
+                Cancel Request
+              </button>
+            )}
           </div>
         </div>
 
@@ -593,10 +618,20 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-2">
                   <button 
                     onClick={handleConnect}
-                    className="px-4 py-2 border border-maroon-500/30 hover:bg-maroon-500/5 text-maroon-700 dark:text-gold-450 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+                    disabled={Boolean(connectionStatus) || requestActionInProgress}
+                    className="px-4 py-2 border border-maroon-500/30 hover:bg-maroon-500/5 text-maroon-700 dark:text-gold-450 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Send Connection Request
+                    {requestLabel}
                   </button>
+                  {connectionStatus === 'pending' && (
+                    <button
+                      onClick={handleCancelRequest}
+                      disabled={requestActionInProgress}
+                      className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 disabled:opacity-50"
+                    >
+                      Cancel Request
+                    </button>
+                  )}
                   <div className="flex flex-col gap-1 items-center">
                     <button
                       onClick={handleUnlockContact}
@@ -690,6 +725,10 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
 
       </div>
 
+      {showRequestConfirmation && (
+        <RequestSentConfirmation onClose={() => setShowRequestConfirmation(false)} />
+      )}
+
       {showUpgradePrompt && (
         <UpgradeModal
           feature={upgradeFeature}
@@ -699,4 +738,3 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
     </div>
   );
 }
-

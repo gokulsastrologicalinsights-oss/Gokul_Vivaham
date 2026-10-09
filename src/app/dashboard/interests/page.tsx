@@ -21,7 +21,7 @@ interface ContactInfo {
 export default function Interests() {
   const queryClient = useQueryClient();
   const { data: interests, isLoading, error } = useInterests();
-  const [activeTab, setActiveTab] = useState<'pending' | 'accepted'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'history'>('pending');
 
   // Mutation and request tracking states
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -67,6 +67,7 @@ export default function Interests() {
   const data = interests || [];
   const pendingRequests = data.filter((item: any) => item.status === 'pending');
   const acceptedConnections = data.filter((item: any) => item.status === 'accepted');
+  const historyRequests = data.filter((item: any) => item.status === 'cancelled' || item.status === 'declined');
 
   // Handle Accept or Decline mutations
   const handleRespond = async (requestId: string, status: 'accepted' | 'declined') => {
@@ -80,6 +81,22 @@ export default function Interests() {
       }
     } catch (err: any) {
       alert(`An error occurred: ${err.message}`);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleCancel = async (requestId: string) => {
+    if (!window.confirm('Cancel this pending interest request? You will not be able to send another request to this member.')) return;
+    setActionInProgress(requestId);
+    try {
+      const { error } = await matchService.cancelRequest(requestId);
+      if (error) {
+        alert(`Failed to cancel request: ${error.message}`);
+      } else {
+        alert('Request Cancelled');
+        await queryClient.invalidateQueries({ queryKey: ['matchRequests'] });
+      }
     } finally {
       setActionInProgress(null);
     }
@@ -216,6 +233,16 @@ export default function Interests() {
         >
           Accepted ({acceptedConnections.length})
         </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex-1 py-2.5 text-xs font-bold rounded-lg tracking-wider uppercase transition-all cursor-pointer ${
+            activeTab === 'history'
+              ? 'bg-white dark:bg-zinc-700 text-maroon-700 dark:text-gold-400 shadow'
+              : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+          }`}
+        >
+          History ({historyRequests.length})
+        </button>
       </div>
 
       {/* Lists display */}
@@ -301,16 +328,25 @@ export default function Interests() {
                         </button>
                       </>
                     ) : (
-                      <span className="text-xs font-bold text-gold-650 dark:text-gold-400 bg-gold-500/10 border border-gold-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider select-none animate-in zoom-in-95 duration-200">
-                        Awaiting Response
-                      </span>
+                      <>
+                        <span className="text-xs font-bold text-gold-650 dark:text-gold-400 bg-gold-500/10 border border-gold-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider select-none animate-in zoom-in-95 duration-200">
+                          Request Sent
+                        </span>
+                        <button
+                          onClick={() => handleCancel(item.id)}
+                          disabled={actionInProgress !== null}
+                          className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          {actionInProgress === item.id ? 'Cancelling…' : 'Cancel Request'}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           )
-        ) : (
+        ) : activeTab === 'accepted' ? (
           /* Render Accepted Connections */
           acceptedConnections.length === 0 ? (
             <div className="p-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 flex flex-col items-center gap-3">
@@ -503,6 +539,29 @@ export default function Interests() {
                   </div>
                 );
               })}
+            </div>
+          )
+        ) : (
+          historyRequests.length === 0 ? (
+            <div className="p-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900">
+              No completed or cancelled requests yet.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {historyRequests.map((item: any) => (
+                <div key={item.id} className="flex items-center justify-between gap-4 rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="flex min-w-0 items-center gap-4">
+                    {item.photoUrl ? <img src={item.photoUrl} alt="" className="h-14 w-14 rounded-full object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sandal-100 text-maroon-600"><Heart className="h-5 w-5" /></div>}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">{item.name}</p>
+                      <p className="text-xs text-zinc-500">{item.profileId} • {item.isIncoming ? 'Received' : 'Sent'}</p>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${item.status === 'declined' ? 'bg-red-500/10 text-red-600' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300'}`}>
+                    {item.status === 'declined' ? 'Interest Declined' : 'Request Already Sent'}
+                  </span>
+                </div>
+              ))}
             </div>
           )
         )}

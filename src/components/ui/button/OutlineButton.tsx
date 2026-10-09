@@ -18,7 +18,7 @@ export default function OutlineButton({
   return (
     <button
       disabled={loading || props.disabled}
-      className={`h-11 px-6 rounded-full border border-border bg-transparent text-foreground text-xs font-bold uppercase tracking-widest hover:bg-surface hover:shadow-sm active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`min-h-11 h-auto max-w-full px-6 py-2 text-center leading-tight rounded-full border border-border bg-transparent text-foreground text-xs font-bold uppercase tracking-widest hover:bg-surface hover:shadow-sm active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       {...props}
     >
       {loading ? (

@@ -15,6 +15,10 @@ export interface EntitlementUsage {
   consultations_used: number;
   consultations_remaining: number;
   consultations_limit: number;
+  messaging_enabled?: boolean;
+  photo_viewing_enabled?: boolean;
+  premium_badge_eligible?: boolean;
+  search_enabled?: boolean;
 }
 
 const DEFAULT_USAGE: EntitlementUsage = {

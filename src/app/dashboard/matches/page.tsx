@@ -14,6 +14,12 @@ import { contactConfig } from '@/config/contact.config';
 import VerificationBadges from '@/components/ui/VerificationBadges';
 import { useCheckout } from '@/hooks/useCheckout';
 import { Unlock, Mail } from 'lucide-react';
+import RequestSentConfirmation from '@/components/ui/RequestSentConfirmation';
+
+type RequestStatus = {
+  id: string;
+  status: 'pending' | 'cancelled' | 'accepted' | 'declined';
+};
 
 function MatchesContent() {
   const router = useRouter();
@@ -49,6 +55,9 @@ function MatchesContent() {
   const [unlockedProfiles, setUnlockedProfiles] = useState<Set<string>>(new Set());
   const [modalContactDetails, setModalContactDetails] = useState<{ email: string; phone: string; premiumLocked?: boolean; unlocked?: boolean } | null>(null);
   const [modalContactLoading, setModalContactLoading] = useState(false);
+  const [requestStatuses, setRequestStatuses] = useState<Record<string, RequestStatus>>({});
+  const [sendingProfileId, setSendingProfileId] = useState<string | null>(null);
+  const [showRequestConfirmation, setShowRequestConfirmation] = useState(false);
 
   const { initiateCheckout, loading: checkoutLoading } = useCheckout();
 
@@ -190,6 +199,8 @@ function MatchesContent() {
             is_featured: featuredSet.has(p.user_id)
           }));
           setAllProfiles(mapped);
+          const statusResult = await matchService.getRequestStatuses(mapped.map((profile: any) => profile.user_id).filter(Boolean));
+          if (!statusResult.error) setRequestStatuses(statusResult.data as Record<string, RequestStatus>);
         }
       } catch (err) {
         setLoadError('Unable to load matches. Please refresh and try again.');
@@ -275,18 +286,89 @@ function MatchesContent() {
     alert(`User ${name} has been reported. Admins will review this within 12 hours.`);
   };
 
-  const handleConnect = async (profile: any) => {
+  const handleConnect = async (profile: any): Promise<boolean> => {
     try {
       const targetUserId = profile.user_id || profile.id;
-      const { error } = await matchService.sendRequest(targetUserId);
+      if (requestStatuses[targetUserId] || sendingProfileId) return false;
+      setSendingProfileId(targetUserId);
+      const { data, error } = await matchService.sendRequest(targetUserId);
       if (error) {
+        const latest = await matchService.getRequestStatus(targetUserId);
+        if (latest.data) setRequestStatuses(prev => ({ ...prev, [targetUserId]: latest.data as RequestStatus }));
         alert('Failed to send connection request: ' + error.message);
+        return false;
       } else {
-        alert(`Connection request sent to ${profile.name}!`);
+        setRequestStatuses(prev => ({
+          ...prev,
+          [targetUserId]: { id: data?.id || `pending-${targetUserId}`, status: 'pending' }
+        }));
+        setShowRequestConfirmation(true);
+        return true;
       }
     } catch (e: any) {
       alert('Error: ' + e.message);
+      return false;
+    } finally {
+      setSendingProfileId(null);
     }
+  };
+
+  const handleCancelRequest = async (profile: any) => {
+    const targetUserId = profile.user_id || profile.id;
+    const request = requestStatuses[targetUserId];
+    if (!request || request.status !== 'pending' || !window.confirm('Cancel this pending interest request? You will not be able to send another request to this member.')) return;
+    setSendingProfileId(targetUserId);
+    try {
+      const { data, error } = await matchService.cancelRequest(request.id);
+      if (error) {
+        alert('Failed to cancel request: ' + error.message);
+      } else {
+        setRequestStatuses(prev => ({ ...prev, [targetUserId]: { id: request.id, status: data?.status || 'cancelled' } }));
+        alert('Request Cancelled');
+      }
+    } finally {
+      setSendingProfileId(null);
+    }
+  };
+
+  const requestLabel = (status?: RequestStatus['status']) => status === 'pending'
+    ? 'Request Sent'
+    : status === 'accepted'
+      ? 'Interest Accepted'
+      : status === 'declined'
+        ? 'Interest Declined'
+        : status === 'cancelled'
+          ? 'Request Already Sent'
+          : 'Send Interest';
+
+  const renderInterestActions = (profile: any, closeAfterSend = false) => {
+    const targetUserId = profile.user_id || profile.id;
+    const request = requestStatuses[targetUserId];
+    const isBusy = sendingProfileId === targetUserId;
+    const handleSend = async () => {
+      const sent = await handleConnect(profile);
+      if (sent && closeAfterSend) setActiveProfile(null);
+    };
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={handleSend}
+          disabled={Boolean(request) || isBusy || Boolean(sendingProfileId)}
+          className="flex-1 rounded-lg luxury-gradient px-3 py-2 text-xs font-semibold text-white shadow transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isBusy && !request ? 'Sending…' : requestLabel(request?.status)}
+        </button>
+        {request?.status === 'pending' && (
+          <button
+            onClick={() => handleCancelRequest(profile)}
+            disabled={isBusy}
+            className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            Cancel Request
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -441,13 +523,10 @@ function MatchesContent() {
                       View Details
                     </button>
 
-                    {/* Connect Trigger */}
-                    <button
-                      onClick={() => handleConnect(profile)}
-                      className="flex-1 py-2 rounded-lg luxury-gradient text-white text-xs font-semibold hover:opacity-90 shadow transition-all cursor-pointer"
-                    >
-                      Connect
-                    </button>
+                    {/* Directional interest state */}
+                    <div className="flex-1">
+                      {renderInterestActions(profile)}
+                    </div>
 
                   </div>
 
@@ -487,7 +566,7 @@ function MatchesContent() {
                     </button>
                   )}
                 </div>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">ID: {activeProfile.id} • Verified Profile</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">ID: {activeProfile.id}{activeProfile.email_verified && activeProfile.mobile_verified ? ' • Verified Profile' : ''}</span>
               </div>
 
               <button
@@ -637,12 +716,7 @@ function MatchesContent() {
                         To protect member safety, contact details are private. You must connect and receive their acceptance before phone numbers or emails are visible.
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-2">
-                        <button 
-                          onClick={() => { handleConnect(activeProfile); setActiveProfile(null); }}
-                          className="px-4 py-2 border border-maroon-500/30 hover:bg-maroon-500/5 text-maroon-700 dark:text-gold-450 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
-                        >
-                          Send Connection Request
-                        </button>
+                        {renderInterestActions(activeProfile, true)}
                         <div className="flex flex-col gap-1 items-center">
                           <button
                             onClick={() => handleUnlockContactModal(activeProfile)}
@@ -683,17 +757,16 @@ function MatchesContent() {
                   <Phone className="h-3.5 w-3.5" /> WhatsApp Inquiry
                 </a>
 
-                <button
-                  onClick={() => { handleConnect(activeProfile); setActiveProfile(null); }}
-                  className="px-5 py-2 rounded-full luxury-gradient text-white text-xs font-bold uppercase tracking-widest hover:opacity-90 shadow-md transition-all cursor-pointer"
-                >
-                  Send Match Interest
-                </button>
+                {renderInterestActions(activeProfile, true)}
               </div>
             </div>
 
           </div>
         </div>
+      )}
+
+      {showRequestConfirmation && (
+        <RequestSentConfirmation onClose={() => setShowRequestConfirmation(false)} />
       )}
 
       {/* UPGRADE PROMPT MODAL */}

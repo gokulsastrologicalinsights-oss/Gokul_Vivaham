@@ -8,9 +8,9 @@ import {
   Printer, Landmark, Settings, Clock, ArrowRight, Phone
 } from 'lucide-react';
 import { subscriptionService } from '@/services/subscription.service';
+import { supabase } from '@/lib/supabase';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAuth } from '@/hooks/useAuth';
-import { SUBSCRIPTION_PLANS } from '@/constants/payments';
 import Toast from '@/components/ui/toast/Toast';
 
 type UnlockedContact = {
@@ -20,65 +20,6 @@ type UnlockedContact = {
   unlocked_at: string;
   profile?: { first_name: string; last_name?: string; profile_id: string };
 };
-
-const planMetadata = [
-  {
-    key: 'FREE',
-    name: 'Startup Plan',
-    desc: 'Get started with profile creation and receive matches.',
-    features: [
-      'Create Profile',
-      'Browse Profiles',
-      'Receive Interests and Messages',
-      'Basic Horoscope Match Percentage',
-      'Limited Daily Profile Views'
-    ]
-  },
-  {
-    key: 'SILVER',
-    name: 'Silver Plan',
-    desc: 'Connect directly and view verified contacts.',
-    features: [
-      'Filter According To Your Preferences',
-      'Browse Profiles',
-      'Verified Badge',
-      'Send and Receive Interests & Messages',
-      'View Up To 15 Contact Numbers',
-      'Unlimited Horoscope Match Percentage',
-      'One Detailed Horoscope Matching Report'
-    ]
-  },
-  {
-    key: 'GOLD',
-    name: 'Gold Plan',
-    desc: 'Best value for astro matching and consultations.',
-    features: [
-      'Filter According To Your Preferences',
-      'Browse Profiles',
-      'Verified Badge',
-      'Send and Receive Interests & Messages',
-      'View Up To 30 Contact Numbers',
-      'Unlimited Horoscope Match Percentage',
-      'Up To 5 Detailed Horoscope Matching Reports',
-      '1 Free Live/Call Horoscope Consultation'
-    ]
-  },
-  {
-    key: 'DIAMOND',
-    name: 'Diamond Plan',
-    desc: 'Full astrological assistance and maximum contacts.',
-    features: [
-      'Filter According To Your Preferences',
-      'Browse Profiles',
-      'Verified Badge',
-      'Send and Receive Interests & Messages',
-      'View Up To 60 Contact Numbers',
-      'Unlimited Horoscope Match Percentage',
-      'Up To 10 Detailed Horoscope Matching Reports',
-      '5 Free Live/Call Horoscope Consultations'
-    ]
-  }
-];
 
 export default function Subscription() {
   const { initiateCheckout, loading: checkoutLoading, error: checkoutError, setError: setCheckoutError } = useCheckout();
@@ -105,6 +46,7 @@ export default function Subscription() {
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
   const { user: billingUser } = useAuth();
   const [billingError, setBillingError] = useState('');
+  const [catalogPlans, setCatalogPlans] = useState<any[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -114,6 +56,8 @@ export default function Subscription() {
         subscriptionService.getActiveSubscription(),
         subscriptionService.getTransactions()
       ]);
+      const { data: livePlans } = await supabase.from('subscription_plans').select('*').eq('is_active', true).order('price', { ascending: true });
+      setCatalogPlans(livePlans || []);
 
       if (subRes.error || txRes.error) {
         setBillingError('Unable to load billing records. Please retry.');
@@ -193,19 +137,8 @@ export default function Subscription() {
     setSuccessMsg('Billing profile updated successfully!');
   };
 
-  // Determine current plan level and filter upgrade options
-  const planOrder = ['FREE', 'SILVER', 'GOLD', 'DIAMOND'];
-  const getActivePlanKey = () => {
-    if (!activeSub || !activeSub.plan) return 'FREE';
-    const name = activeSub.plan.name.toUpperCase();
-    if (name.includes('DIAMOND') || name.includes('PLATINUM')) return 'DIAMOND';
-    if (name.includes('GOLD')) return 'GOLD';
-    if (name.includes('SILVER')) return 'SILVER';
-    return 'FREE';
-  };
-
-  const currentPlanKey = getActivePlanKey();
-  const currentIndex = planOrder.indexOf(currentPlanKey);
+  const currentPlanId = activeSub?.plan_id || activeSub?.plan?.id || null;
+  const currentPlanPrice = Number(activeSub?.plan?.price || 0);
 
   const getDaysRemaining = () => {
     if (!activeSub || !activeSub.end_date) return 0;
@@ -432,38 +365,24 @@ export default function Subscription() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-2 items-stretch">
-          {Object.entries(SUBSCRIPTION_PLANS).map(([key, planDef]) => {
-            const isCurrent = currentPlanKey === key;
+          {catalogPlans.map((planDef: any) => {
+            const isCurrent = currentPlanId === planDef.id;
             const isPurchasingThis = purchasingPlanId === planDef.id && checkoutLoading;
-            
-            // Check order to decide upgrade or downgrade
-            const planIdx = planOrder.indexOf(key);
-            const isHigher = planIdx > currentIndex;
-            const isLower = planIdx < currentIndex;
-            
-            const metadata = planMetadata.find(m => m.key === key) || {
-              name: planDef.name,
-              desc: '',
-              features: []
-            };
+            const isLower = Boolean(currentPlanId) && Number(planDef.price) < currentPlanPrice;
+            const featureValues = Array.isArray(planDef.features) ? planDef.features : Object.entries(planDef.features || {}).filter(([, value]) => value !== false && value !== 0 && value !== null).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${String(value)}`);
 
             return (
               <div
-                key={key}
+                  key={planDef.id}
                 className={`p-6 rounded-3xl bg-white dark:bg-zinc-900 shadow-md border flex flex-col justify-between transition-all relative overflow-hidden ${
                   isCurrent 
                     ? "border-maroon-600 dark:border-gold-500/80 ring-1 ring-maroon-600/30" 
-                    : key === 'DIAMOND'
+                    : planDef.premium_badge_eligible
                     ? "border-gold-500/40 dark:border-gold-800/40 bg-gradient-to-b from-amber-500/5 to-transparent"
                     : "border-sandal-200 dark:border-zinc-800/80"
                 }`}
               >
                 {/* Popular / Active Badges */}
-                {key === 'GOLD' && (
-                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-amber-500 text-[8px] font-bold text-white uppercase tracking-wider">
-                    Most Popular
-                  </div>
-                )}
                 {isCurrent && (
                   <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-maroon-600 dark:bg-gold-600 text-[8px] font-bold text-white uppercase tracking-wider flex items-center gap-0.5 shadow-sm">
                     Active
@@ -471,17 +390,17 @@ export default function Subscription() {
                 )}
 
                 <div className="flex flex-col text-left gap-1">
-                  <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest">{key} Package</span>
+                  <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest">Membership Package</span>
                   <h3 className="text-base font-serif font-bold text-zinc-900 dark:text-white mt-1">
-                    {metadata.name || planDef.name}
+                    {planDef.name}
                   </h3>
                   
                   <div className="mt-3 flex flex-col items-start gap-1">
                     <div className="flex items-baseline gap-0.5">
                       <span className="text-2xl font-serif font-extrabold text-zinc-900 dark:text-white">
-                        ₹{planDef.price.toLocaleString('en-IN')}
+                        ₹{Number(planDef.price || 0).toLocaleString('en-IN')}
                       </span>
-                      {planDef.price > 0 && <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">/ {planDef.durationDays} days</span>}
+                      {Number(planDef.price) > 0 && <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">/ {planDef.duration_days} days</span>}
                     </div>
                     {planDef.price > 0 && (
                       <div className="flex flex-col items-start leading-tight">
@@ -492,14 +411,14 @@ export default function Subscription() {
                   </div>
                   
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-450 mt-2 font-light min-h-[40px] leading-relaxed">
-                    {metadata.desc}
+                    {planDef.description}
                   </p>
 
                   <div className="h-px bg-zinc-150/60 dark:bg-zinc-800/60 my-4" />
 
                   {/* Features List */}
                   <ul className="space-y-2 mb-6">
-                    {metadata.features.map(f => (
+                    {featureValues.map((f: any) => (
                       <li key={f} className="flex items-start gap-2 text-xs text-zinc-655 dark:text-zinc-400 font-light leading-normal">
                         <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                         <span>{f}</span>
@@ -525,7 +444,7 @@ export default function Subscription() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleUpgrade(key, planDef.id)}
+                      onClick={() => handleUpgrade(planDef.name, planDef.id)}
                       disabled={checkoutLoading}
                       className="w-full py-2 rounded-xl luxury-gradient text-white text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow transition-all cursor-pointer disabled:opacity-50 focus:outline-none"
                     >

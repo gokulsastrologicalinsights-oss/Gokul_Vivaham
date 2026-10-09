@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, 
   Mail, Phone, Upload, Loader2, ArrowRight, 
@@ -9,6 +9,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import { uploadService } from '@/services/upload.service';
 import { verificationService } from '@/services/verification.service';
+import ProfileVerificationBanner from '@/components/verification/ProfileVerificationBanner';
+import { normalizeVerificationPhone } from '@/lib/verification/phone';
 
 export default function UserVerificationPage() {
   const [loading, setLoading] = useState(true);
@@ -29,12 +31,14 @@ export default function UserVerificationPage() {
   const [showEmailOtp, setShowEmailOtp] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
   const [emailVerifying, setEmailVerifying] = useState(false);
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0);
 
   // Mobile verification dialog states
   const [mobileValue, setMobileValue] = useState('');
   const [showMobileOtp, setShowMobileOtp] = useState(false);
   const [mobileOtp, setMobileOtp] = useState('');
   const [mobileVerifying, setMobileVerifying] = useState(false);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
 
   const [dbUserId, setDbUserId] = useState<string>('');
 
@@ -84,15 +88,23 @@ export default function UserVerificationPage() {
     loadVerificationData();
   }, []);
 
+  useEffect(() => {
+    if (!emailResendCooldown) return;
+    const timer = window.setInterval(() => setEmailResendCooldown(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [emailResendCooldown]);
+
   // Handlers for Email Verify
   const handleSendEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (emailResendCooldown) return;
     setContactMessage('');
     setEmailVerifying(true);
     try {
       const { error } = await verificationService.sendContactOtp('email', emailValue);
       if (error) throw error;
       setShowEmailOtp(true);
+      setEmailResendCooldown(60);
     } catch (error) { setContactMessage(error instanceof Error ? error.message : 'Email delivery failed.'); }
     finally { setEmailVerifying(false); }
   };
@@ -117,10 +129,27 @@ export default function UserVerificationPage() {
   // Handlers for Mobile Verify
   const handleSendMobileOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!mobileValue.trim()) {
+      alert('Please enter your phone number.');
+      setContactMessage('Please enter your phone number.');
+      mobileInputRef.current?.focus();
+      return;
+    }
+
+    let normalizedMobile: string;
+    try {
+      normalizedMobile = normalizeVerificationPhone(mobileValue);
+    } catch (error) {
+      setContactMessage(error instanceof Error ? error.message : 'Enter a valid phone number with country code.');
+      mobileInputRef.current?.focus();
+      return;
+    }
+
     setContactMessage('');
     setMobileVerifying(true);
     try {
-      const { error } = await verificationService.sendContactOtp('mobile', mobileValue);
+      setMobileValue(normalizedMobile);
+      const { error } = await verificationService.sendContactOtp('mobile', normalizedMobile);
       if (error) throw error;
       setShowMobileOtp(true);
     } catch (error) { setContactMessage(error instanceof Error ? error.message : 'SMS delivery failed.'); }
@@ -215,6 +244,7 @@ export default function UserVerificationPage() {
   return (
     <div className="flex flex-col gap-6 text-left max-w-4xl mx-auto w-full">
       {contactMessage && <p role="alert" className="p-3 rounded-xl border border-red-300 text-sm text-red-700 dark:text-red-300">{contactMessage}</p>}
+      <ProfileVerificationBanner buttonLabel="Verify via WhatsApp" />
       {/* Title */}
       <div className="flex flex-col gap-1.5 border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <h1 className="text-2xl md:text-3xl font-serif font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
@@ -273,10 +303,10 @@ export default function UserVerificationPage() {
                     />
                     <button 
                       type="submit"
-                      disabled={emailVerifying}
+                      disabled={emailVerifying || emailResendCooldown > 0}
                       className="px-4 py-2 rounded-xl bg-maroon-500 hover:bg-maroon-600 text-white font-bold text-xs uppercase tracking-wider cursor-pointer"
                     >
-                      Verify
+                      {emailResendCooldown ? `Resend in ${emailResendCooldown}s` : 'Send verification email'}
                     </button>
                   </form>
                 ) : (
@@ -352,6 +382,7 @@ export default function UserVerificationPage() {
                 {!showMobileOtp ? (
                   <form onSubmit={handleSendMobileOtp} className="flex gap-2">
                     <input 
+                      ref={mobileInputRef}
                       type="tel"
                       aria-label="Mobile number with country code"
                       value={mobileValue} 

@@ -1,5 +1,7 @@
 'use client';
 
+export { default } from './ProfilePageContent';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
@@ -11,7 +13,7 @@ import { supabase } from '@/lib/supabase';
 import {complianceService} from '@/services/compliance.service';
 import VerificationBadges from '@/components/ui/VerificationBadges';
 
-export default function DashboardProfilePage() {
+function LegacyDashboardProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -411,4 +413,3 @@ export default function DashboardProfilePage() {
     </div>
   );
 }
-

@@ -14,7 +14,7 @@ export const subscriptionService = {
 
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*, plan:subscription_plans(*)')
+        .select('id,user_id,plan_id,payment_status,start_date,end_date,grant_type,razorpay_payment_id,razorpay_subscription_id,created_at,updated_at,plan:subscription_plans(id,name,description,price,duration_days,features,is_active,contact_view_limit,messaging_enabled,profile_visibility_benefit,photo_viewing_enabled,premium_badge_eligible,search_enabled)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       return { data: data || [], error };
@@ -30,9 +30,10 @@ export const subscriptionService = {
 
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*, plan:subscription_plans(*)')
+        .select('id,user_id,plan_id,payment_status,start_date,end_date,grant_type,razorpay_payment_id,razorpay_subscription_id,created_at,updated_at,plan:subscription_plans(id,name,description,price,duration_days,features,is_active,contact_view_limit,messaging_enabled,profile_visibility_benefit,photo_viewing_enabled,premium_badge_eligible,search_enabled)')
         .eq('user_id', user.id)
         .eq('payment_status', 'Completed')
+        .lte('start_date', new Date().toISOString())
         .gt('end_date', new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(1)
