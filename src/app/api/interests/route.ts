@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('match_requests')
-    .select('id,sender_user_id,receiver_user_id,status,message,created_at,updated_at,responded_at,cancelled_at')
+    .select('id,sender_user_id,receiver_user_id,status,message,created_at,updated_at')
     .eq('sender_user_id', member.id)
     .in('receiver_user_id', recipientIds);
 
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
   const { data: existing } = await supabaseAdmin
     .from('match_requests')
-    .select('id,status,created_at,updated_at,responded_at,cancelled_at')
+    .select('id,status,created_at,updated_at')
     .eq('sender_user_id', member.id)
     .eq('receiver_user_id', receiverUserId)
     .maybeSingle();
@@ -120,14 +120,14 @@ export async function POST(request: Request) {
   const { data: created, error } = await supabaseAdmin
     .from('match_requests')
     .insert({ sender_user_id: member.id, receiver_user_id: receiverUserId, status: 'pending' })
-    .select('id,sender_user_id,receiver_user_id,status,message,created_at,updated_at,responded_at,cancelled_at')
+    .select('id,sender_user_id,receiver_user_id,status,message,created_at,updated_at')
     .single();
 
   if (error) {
     if (error.code === '23505') {
       const { data: concurrent } = await supabaseAdmin
         .from('match_requests')
-        .select('id,status,created_at,updated_at,responded_at,cancelled_at')
+        .select('id,status,created_at,updated_at')
         .eq('sender_user_id', member.id)
         .eq('receiver_user_id', receiverUserId)
         .maybeSingle();
@@ -163,12 +163,17 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'You are not allowed to change this interest request.' }, { status: 403 });
   }
 
+  const transitionAt = new Date().toISOString();
+  const transition = status === 'cancelled'
+    ? { status, cancelled_at: transitionAt }
+    : { status, responded_at: transitionAt };
+
   const { data: updated, error } = await supabaseAdmin
     .from('match_requests')
-    .update({ status })
+    .update(transition)
     .eq('id', requestId)
     .eq('status', 'pending')
-    .select('id,sender_user_id,receiver_user_id,status,message,created_at,updated_at,responded_at,cancelled_at')
+    .select('id,sender_user_id,receiver_user_id,status,message,created_at,updated_at')
     .maybeSingle();
   if (error) {
     console.error('Interest update failed', error);
