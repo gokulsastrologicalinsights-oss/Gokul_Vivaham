@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FileText, Image as ImageIcon, Sparkles } from 'lucide-react';
+import PhotoCropEditor, { type PhotoCropMetadata } from '@/components/dashboard/PhotoCropEditor';
 
 interface HoroscopeUploadStepProps {
   formData: any;
@@ -24,6 +25,7 @@ export default function HoroscopeUploadStep({
 }: HoroscopeUploadStepProps) {
   const [photoLoading, setPhotoLoading] = useState(false);
   const [fileError,setFileError]=useState('');
+  const [editorFile, setEditorFile] = useState<File | null>(null);
 
   const handleHoroscopeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -39,15 +41,18 @@ export default function HoroscopeUploadStep({
       const file=e.target.files[0];
       if(!['image/jpeg','image/png','image/webp'].includes(file.type) || !file.size || file.size>5*1024*1024) {setFileError('Choose a JPEG, PNG or WebP photo no larger than 5MB.');e.target.value='';return;}
       setFileError('');
-      setPhotoLoading(true);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePhoto(reader.result as string);
-        setPhotoLoading(false);
-      };
-      reader.onerror=()=>{setFileError('This photo could not be read. Please choose another file.');setPhotoLoading(false);};
-      reader.readAsDataURL(e.target.files[0]);
+      setPhotoLoading(false);
+      setEditorFile(file);
     }
+  };
+
+  const handleCropConfirm = (croppedFile: File, crop: PhotoCropMetadata) => {
+    void crop;
+    const reader = new FileReader();
+    reader.onloadend = () => setProfilePhoto(reader.result as string);
+    reader.onerror = () => setFileError('This photo could not be read. Please choose another file.');
+    reader.readAsDataURL(croppedFile);
+    setEditorFile(null);
   };
 
   return (
@@ -85,7 +90,7 @@ export default function HoroscopeUploadStep({
                 alt="Preview" 
                 className="h-16 w-16 rounded-full object-cover border border-gold-500"
               />
-              <span className="text-[10px] text-emerald-600 font-bold">Photo loaded!</span>
+              <span className="text-[10px] text-emerald-600 font-bold">Crop confirmed · Photo stays private until review</span>
             </div>
           ) : (
             <>
@@ -104,6 +109,8 @@ export default function HoroscopeUploadStep({
           )}
         </div>
       </div>
+
+      {editorFile ? <PhotoCropEditor file={editorFile} onCancel={() => setEditorFile(null)} onConfirm={handleCropConfirm} /> : null}
 
       <div className="flex flex-col gap-1 md:col-span-2">
         <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">About Me</label>

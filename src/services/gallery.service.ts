@@ -1,7 +1,7 @@
 import { syncServerSession } from '@/lib/auth/session-client';
 import { supabase } from '@/lib/supabase';
-import { uploadService } from '@/services/upload.service';
 import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
+import type { PhotoCropMetadata } from '@/components/dashboard/PhotoCropEditor';
 
 const isMockMode = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -16,6 +16,13 @@ export interface GalleryImage {
   thumbnail_url?: string;
   thumbnail_key?: string;
   display_key?: string;
+  image_format?: 'webp' | 'jpeg' | 'avif' | null;
+  thumbnail_width?: number | null;
+  thumbnail_height?: number | null;
+  thumbnail_bytes?: number | null;
+  display_width?: number | null;
+  display_height?: number | null;
+  display_bytes?: number | null;
   is_profile_picture: boolean;
   is_private: boolean;
   privacy_level: 'public' | 'matches_only' | 'premium_only' | 'hidden';
@@ -24,6 +31,17 @@ export interface GalleryImage {
   moderation_status: 'pending' | 'approved' | 'rejected' | 'flagged';
   moderated_at?: string;
   moderated_by?: string;
+  rejection_reason?: string | null;
+  crop_metadata?: Record<string, unknown>;
+  deleted_at?: string | null;
+  pending_replacement?: {
+    id: string;
+    image_url: string;
+    thumbnail_url: string;
+    moderation_status: 'pending';
+    submitted_at: string;
+    rejection_reason?: string | null;
+  } | null;
   // Enriched admin fields
   first_name?: string;
   last_name?: string;
@@ -94,32 +112,55 @@ export const galleryService = {
         const userImages = gallery
           .filter((img) => img.user_id === userId)
           .sort((a, b) => a.sort_order - b.sort_order || new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime());
-        return { data: userImages, error: null };
+        const replacementCount = Number(localStorage.getItem(`gokul_mock_photo_replacements:${userId}`) || 0);
+        const hasDeletedPhoto = localStorage.getItem(`gokul_mock_deleted_photo_history:${userId}`) === 'true';
+        return { data: userImages, error: null, replacementsRemaining: Math.max(0, 3 - replacementCount), hasDeletedPhoto };
       }
 
-      const { data, error } = await supabase
-        .from('gallery_images')
-        .select('*')
-        .eq('user_id', userId)
-        .order('sort_order', { ascending: true })
-        .order('uploaded_at', { ascending: true });
-
-      return { data: data as GalleryImage[] || [], error };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || session.user.id !== userId) throw new Error('Please sign in to your own account.');
+      await syncServerSession(session.access_token);
+      const response = await fetch('/api/photos', { cache: 'no-store' });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Could not load your photos.');
+      return { data: (result?.photos || []) as GalleryImage[], error: null, replacementsRemaining: result?.replacementsRemaining ?? 3, hasDeletedPhoto: Boolean(result?.hasDeletedPhoto) };
     } catch (err: any) {
       console.error('Error fetching gallery images:', err);
       return { data: [], error: err };
     }
   },
 
-  async uploadGalleryImage(userId: string, imageUrl: string, isProfilePicture = false, thumbnailUrl?: string) {
+  async uploadGalleryImage(userId: string, imageUrl: string, isProfilePicture = false, thumbnailUrl?: string, replacePhotoId?: string, crop?: PhotoCropMetadata) {
     try {
       if (isMockMode()) {
         const gallery = getMockGallery();
         const userImages = gallery.filter((img) => img.user_id === userId);
+
+        if (replacePhotoId) {
+          const target = userImages.find((img) => img.id === replacePhotoId);
+          const replacementKey = `gokul_mock_photo_replacements:${userId}`;
+          const replacementCount = Number(localStorage.getItem(replacementKey) || 0);
+          if (!target) throw new Error('Photo not found');
+          if (replacementCount >= 3) throw new Error('You have reached the maximum of 3 photo changes.');
+          target.image_url = imageUrl;
+          target.thumbnail_url = thumbnailUrl;
+          target.moderation_status = 'pending';
+          localStorage.setItem(replacementKey, String(replacementCount + 1));
+          saveMockGallery(gallery);
+          return { data: target, error: null };
+        }
         
         // Keep mock mode aligned with the database-enforced limit.
         if (userImages.length >= MAX_PROFILE_PHOTOS) {
           throw new Error(`You can upload up to ${MAX_PROFILE_PHOTOS} photos. Delete an existing photo before uploading another.`);
+        }
+
+        const replacementKey = `gokul_mock_photo_replacements:${userId}`;
+        const replacementCount = Number(localStorage.getItem(replacementKey) || 0);
+        const hasDeletedPhoto = localStorage.getItem(`gokul_mock_deleted_photo_history:${userId}`) === 'true';
+        if (hasDeletedPhoto) {
+          if (replacementCount >= 3) throw new Error('You have reached the maximum of 3 photo changes.');
+          localStorage.setItem(replacementKey, String(replacementCount + 1));
         }
 
         const nextSortOrder = userImages.reduce((max, img) => Math.max(max, img.sort_order), -1) + 1;
@@ -139,18 +180,13 @@ export const galleryService = {
         gallery.push(newImage);
         saveMockGallery(gallery);
 
-        // If it is the first/profile picture, update mock profile image
-        if (newImage.is_profile_picture) {
-          this.syncMockProfilePicture(userId, imageUrl);
-        }
-
         return { data: newImage, error: null };
       }
 
       const {data:{session}}=await supabase.auth.getSession();
       if (!session || session.user.id !== userId) throw new Error('Please sign in to your own account.');
       await syncServerSession(session.access_token);
-      const response=await fetch('/api/photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayPath:imageUrl,thumbnailPath:thumbnailUrl,primary:isProfilePicture})});
+      const response=await fetch('/api/photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayPath:imageUrl,thumbnailPath:thumbnailUrl,primary:isProfilePicture,replacePhotoId,crop})});
       const result=await response.json();
       if(!response.ok) throw new Error(result.error || 'Photo could not be saved.');
       return {data:result.photo as GalleryImage,error:null};
@@ -169,6 +205,7 @@ export const galleryService = {
 
         gallery = gallery.filter((img) => img.id !== imageId);
         saveMockGallery(gallery);
+        localStorage.setItem(`gokul_mock_deleted_photo_history:${userId}`, 'true');
 
         // If it was the profile picture, set another one as profile picture if available
         if (imageToDelete.is_profile_picture) {
@@ -185,67 +222,12 @@ export const galleryService = {
         return { success: true, error: null };
       }
 
-      // Fetch the photo details first to know if it's a profile photo or find its file path
-      const { data: photo } = await supabase
-        .from('gallery_images')
-        .select('*')
-        .eq('id', imageId)
-        .single();
-
-      if (!photo) throw new Error('Photo not found');
-
-      // Delete from database
-      const { error } = await supabase
-        .from('gallery_images')
-        .delete()
-        .eq('id', imageId);
-
-      if (error) throw error;
-
-      const variantPaths = [photo.display_key, photo.thumbnail_key].filter(Boolean) as string[];
-      if (variantPaths.length) {
-        for (const path of variantPaths) await uploadService.removeFile('photos', path);
-      } else if (photo.image_url.startsWith('/api/photos?path=')) {
-        const path = new URL(photo.image_url, window.location.origin).searchParams.get('path');
-        if (path) await uploadService.removeFile('photos', path);
-      }
-      // Remove any legacy public file too.
-      if (photo.image_url.includes('/storage/v1/object/public/photos/')) {
-        const parts = photo.image_url.split('/public/photos/');
-        if (parts.length > 1) {
-          const fileName = parts[1];
-          await uploadService.removeFile('photos', fileName);
-        }
-      }
-
-      // If it was the profile picture, assign a new one
-      if (photo.is_profile_picture) {
-        const { data: remaining } = await supabase
-          .from('gallery_images')
-          .select('*')
-          .eq('user_id', userId)
-          .order('sort_order', { ascending: true })
-          .limit(1);
-
-        if (remaining && remaining.length > 0) {
-          const nextProfilePhoto = remaining[0];
-          await supabase
-            .from('gallery_images')
-            .update({ is_profile_picture: true })
-            .eq('id', nextProfilePhoto.id);
-
-          await supabase
-            .from('profiles')
-            .update({ image_url: nextProfilePhoto.thumbnail_url || nextProfilePhoto.image_url })
-            .eq('user_id', userId);
-        } else {
-          await supabase
-            .from('profiles')
-            .update({ image_url: null })
-            .eq('user_id', userId);
-        }
-      }
-
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || session.user.id !== userId) throw new Error('Please sign in to your own account.');
+      await syncServerSession(session.access_token);
+      const response = await fetch('/api/photos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photoId: imageId }) });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Photo could not be deleted.');
       return { success: true, error: null };
     } catch (err: any) {
       console.error('Error deleting gallery image:', err);
@@ -273,31 +255,12 @@ export const galleryService = {
         return { success: true, error: null };
       }
 
-      // 1. Set all user's pictures to false
-      const { error: resetErr } = await supabase
-        .from('gallery_images')
-        .update({ is_profile_picture: false })
-        .eq('user_id', userId);
-
-      if (resetErr) throw resetErr;
-
-      // 2. Set chosen image to true
-      const { data: updatedPhoto, error: setErr } = await supabase
-        .from('gallery_images')
-        .update({ is_profile_picture: true })
-        .eq('id', imageId)
-        .select()
-        .single();
-
-      if (setErr) throw setErr;
-
-      // 3. Sync to profile table
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update({ image_url: updatedPhoto.thumbnail_url || updatedPhoto.image_url })
-        .eq('user_id', userId);
-
-      if (profileErr) throw profileErr;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || session.user.id !== userId) throw new Error('Please sign in to your own account.');
+      await syncServerSession(session.access_token);
+      const response = await fetch('/api/photos', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set_primary', photoId: imageId }) });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Only an approved photo can be selected as primary.');
 
       return { success: true, error: null };
     } catch (err: any) {
@@ -379,11 +342,11 @@ export const galleryService = {
   },
 
   // Admin Moderation Queue
-  async adminGetPendingGallery() {
+  async adminGetPendingGallery(status: 'pending' | 'approved' | 'rejected' | 'flagged' = 'pending') {
     try {
       if (isMockMode()) {
         const gallery = getMockGallery();
-        const pending = gallery.filter((img) => img.moderation_status === 'pending');
+        const pending = gallery.filter((img) => img.moderation_status === status);
         
         // Enrich pending with mock profile info if not already there
         const enriched = pending.map(img => {
@@ -401,32 +364,13 @@ export const galleryService = {
         return { data: enriched, error: null };
       }
 
-      const { data, error } = await supabase
-        .from('gallery_images')
-        .select('*')
-        .eq('moderation_status', 'pending')
-        .order('uploaded_at', { ascending: false });
-
-      if (error || !data) return { data: [], error };
-
-      const enriched = await Promise.all(
-        data.map(async (row: any) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, profile_id')
-            .eq('user_id', row.user_id)
-            .maybeSingle();
-
-          return {
-            ...row,
-            first_name: profile?.first_name || 'Unknown',
-            last_name: profile?.last_name || 'User',
-            profile_id: profile?.profile_id || 'GV-UNKNOWN'
-          };
-        })
-      );
-
-      return { data: enriched, error: null };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Please sign in again.');
+      await syncServerSession(session.access_token);
+      const response = await fetch(`/api/admin/photos?status=${status}`, { cache: 'no-store' });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Could not load the photo queue.');
+      return { data: result?.photos || [], error: null };
     } catch (err: any) {
       console.error('Error fetching admin pending gallery:', err);
       return { data: [], error: err };
@@ -442,18 +386,14 @@ export const galleryService = {
       } as const;
 
       if (isMockMode()) {
-        let gallery = getMockGallery();
+        const gallery = getMockGallery();
         
-        if (action === 'reject') {
-          // If rejected in mock mode, delete it to simulate moderation cleanups
-          gallery = gallery.filter((img) => img.id !== imageId);
-        } else {
-          gallery.forEach((img) => {
-            if (img.id === imageId) {
-              img.moderation_status = statusMap[action];
-            }
-          });
-        }
+        gallery.forEach((img) => {
+          if (img.id === imageId) {
+            img.moderation_status = statusMap[action];
+            img.rejection_reason = action === 'reject' || action === 'flag' ? adminNotes || 'Photo did not meet the review guidelines.' : null;
+          }
+        });
         
         saveMockGallery(gallery);
         return { success: true, error: null };
@@ -462,7 +402,7 @@ export const galleryService = {
       const {data:{session}}=await supabase.auth.getSession();
       if(!session) throw new Error('Please sign in again.');
       await syncServerSession(session.access_token);
-      const response=await fetch('/api/admin/photos',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({photoId:imageId,action})});
+      const response=await fetch('/api/admin/photos',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({photoId:imageId,action,reason:adminNotes})});
       const result=await response.json();
       if(!response.ok) throw new Error(result.error || 'Photo review failed.');
       return {success:true,error:null};

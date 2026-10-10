@@ -38,7 +38,8 @@ export function useFeaturedProfiles() {
         .select('user_id, image_url, thumbnail_url')
         .in('user_id', userIds)
         .eq('is_profile_picture', true)
-        .eq('moderation_status', 'approved');
+        .eq('moderation_status', 'approved')
+        .is('deleted_at', null);
 
       if (photoErr) throw photoErr;
 

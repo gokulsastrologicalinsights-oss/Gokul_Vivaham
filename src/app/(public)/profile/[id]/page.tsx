@@ -139,6 +139,7 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
           .select('*')
           .eq('user_id', profileData.user_id)
           .eq('moderation_status', 'approved')
+          .is('deleted_at', null)
           .order('sort_order', { ascending: true })
           .order('uploaded_at', { ascending: true });
 

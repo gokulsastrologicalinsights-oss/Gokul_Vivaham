@@ -58,7 +58,7 @@ export const chatService = {
           // Get profile with verification states
           const { data: profile } = await supabase
             .from('profiles')
-            .select('first_name, last_name, profile_id, image_url, age, is_verified, is_premium, id_verification_status, horoscope_verification_status, users(email_verified, mobile_verified)')
+            .select('first_name, last_name, profile_id, age, is_verified, is_premium, id_verification_status, horoscope_verification_status, users(email_verified, mobile_verified)')
             .eq('user_id', otherUserId)
             .maybeSingle();
 
@@ -69,6 +69,8 @@ export const chatService = {
             .select('image_url, thumbnail_url')
             .eq('user_id', otherUserId)
             .eq('is_profile_picture', true)
+            .eq('moderation_status', 'approved')
+            .is('deleted_at', null)
             .limit(1)
             .maybeSingle();
 
@@ -94,7 +96,7 @@ export const chatService = {
             updated_at: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
             other_user_id: otherUserId,
             profile_id: profile?.profile_id || null,
-            profile_photo_url: profile?.image_url || galleryPhoto?.thumbnail_url || galleryPhoto?.image_url || null,
+            profile_photo_url: galleryPhoto?.thumbnail_url || galleryPhoto?.image_url || null,
             // verification states
             is_verified: profile?.is_verified || false,
             is_premium: profile?.is_premium || false,

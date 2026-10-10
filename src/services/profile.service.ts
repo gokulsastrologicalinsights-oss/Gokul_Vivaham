@@ -84,18 +84,5 @@ export const profileService = {
     } catch (err: any) {
       return { data: null, error: err };
     }
-  },
-  
-  async createGalleryImage(imageData: { user_id: string; image_url: string; is_profile_picture: boolean; is_private: boolean }) {
-    try {
-      const { data, error } = await supabase
-        .from('gallery_images')
-        .insert(imageData)
-        .select()
-        .maybeSingle();
-      return { data, error };
-    } catch (err: any) {
-      return { data: null, error: err };
-    }
   }
 };

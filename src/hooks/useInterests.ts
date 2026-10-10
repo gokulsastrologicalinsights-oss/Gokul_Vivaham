@@ -49,7 +49,8 @@ export function useInterests() {
         .select('user_id, image_url, thumbnail_url')
         .in('user_id', otherUserIds)
         .eq('is_profile_picture', true)
-        .eq('moderation_status', 'approved');
+        .eq('moderation_status', 'approved')
+        .is('deleted_at', null);
 
       const photoMap = new Map();
       photos?.forEach((img: any) => {

@@ -11,6 +11,7 @@ import { MAX_PROFILE_PHOTOS } from '@/constants/photos';
 import { galleryService, type GalleryImage } from '@/services/gallery.service';
 import { uploadService } from '@/services/upload.service';
 import { useAuthStore } from '@/stores/authStore';
+import PhotoCropEditor, { type PhotoCropMetadata } from './PhotoCropEditor';
 
 type Tab = 'photos' | 'settings';
 type Visibility = 'all_members' | 'liked_and_premium';
@@ -52,6 +53,7 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
   const [activeTab, setActiveTab] = useState<Tab>('photos');
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [galleryLoaded, setGalleryLoaded] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -60,6 +62,10 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
   const [albumVisibility, setAlbumVisibility] = useState<Visibility>('all_members');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [replacementsRemaining, setReplacementsRemaining] = useState(3);
+  const [hasDeletedPhotoHistory, setHasDeletedPhotoHistory] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
 
   const showMessage = useCallback((message: string, isError = false) => {
     setError(isError ? message : null);
@@ -69,13 +75,17 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
   const loadGallery = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
+    setGalleryLoaded(false);
     try {
-      const { data, error: fetchError } = await galleryService.getGalleryImages(user.id);
+      const { data, error: fetchError, replacementsRemaining: remaining, hasDeletedPhoto } = await galleryService.getGalleryImages(user.id);
       if (fetchError) throw fetchError;
       setImages(data ?? []);
+      setReplacementsRemaining(remaining ?? 3);
+      setHasDeletedPhotoHistory(Boolean(hasDeletedPhoto));
+      setGalleryLoaded(true);
     } catch (loadError) {
       console.error(loadError);
-      showMessage('Failed to load your photos. Please refresh and try again.', true);
+      showMessage(loadError instanceof Error ? loadError.message : 'Failed to load your photos. Please refresh and try again.', true);
     } finally { setLoading(false); }
   }, [showMessage, user?.id]);
 
@@ -103,21 +113,30 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !user?.id) return;
-    if (images.length >= MAX_PROFILE_PHOTOS) return showMessage(`You can upload only ${MAX_PROFILE_PHOTOS} photos. Delete an existing photo before uploading the latest one.`, true);
+    if (!galleryLoaded) return showMessage('Please wait until your existing photos have loaded before uploading.', true);
+    if (!replaceTargetId && images.length >= MAX_PROFILE_PHOTOS) return showMessage('You can upload a maximum of 2 profile photos.', true);
+    if (!replaceTargetId && hasDeletedPhotoHistory && replacementsRemaining <= 0) return showMessage('You have reached the maximum of 3 photo changes.', true);
     if (!ALLOWED_PHOTO_TYPES.has(file.type)) return showMessage('Unsupported format. Upload a JPG, JPEG, PNG, or WEBP photo.', true);
     if (!file.size || file.size >= FIVE_MB) return showMessage('This photo is too large. Each photo must be smaller than 5 MB.', true);
+    if (replaceTargetId && replacementsRemaining <= 0) return showMessage('You have reached the maximum of 3 photo changes.', true);
+    setSelectedFile(file);
+  };
 
+  const handleCropConfirm = async (croppedFile: File, crop: PhotoCropMetadata) => {
+    if (!user?.id) return;
+    setSelectedFile(null);
     setUploading(true);
     setError(null);
     const uploadedPaths: string[] = [];
     try {
-      const { url, thumbnailUrl, error: uploadError } = await uploadService.uploadFile(file, 'photos');
+      const { url, thumbnailUrl, error: uploadError } = await uploadService.uploadFile(croppedFile, 'photos');
       if (uploadError || !url || !thumbnailUrl) throw uploadError || new Error('Upload failed.');
       uploadedPaths.push(url, thumbnailUrl);
-      const { error: saveError } = await galleryService.uploadGalleryImage(user.id, url, images.length === 0, thumbnailUrl);
+      const { error: saveError } = await galleryService.uploadGalleryImage(user.id, url, images.length === 0, thumbnailUrl, replaceTargetId || undefined, crop);
       if (saveError) throw saveError;
       uploadedPaths.length = 0;
-      showMessage('Photo uploaded. It is now waiting for moderation.');
+      setReplaceTargetId(null);
+      showMessage(replaceTargetId ? 'Photo change submitted. The new photo is waiting for moderation.' : 'Photo uploaded. It is now waiting for moderation.');
       await loadGallery();
     } catch (uploadError) {
       console.error(uploadError);
@@ -208,19 +227,19 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
         {activeTab === 'photos' ? (
           <section aria-labelledby="photo-tab-heading" className="space-y-6">
             <div className="rounded-2xl border border-gold-500/20 bg-gold-500/5 p-4 text-xs leading-relaxed text-zinc-300 sm:p-5 sm:text-sm">
-              <p id="photo-tab-heading"><strong className="text-gold-400">Note:</strong> You can upload 2 photos to your profile. Each photo must be less than 5 MB and in JPG, JPEG, PNG, or WEBP format. All uploaded photos are screened according to <Link href="/community-guidelines#photo-guidelines" className="font-semibold text-gold-400 underline underline-offset-2 hover:text-gold-300">Photo Guidelines</Link>, and 98% of photos get activated within 2 hours.</p>
+              <p id="photo-tab-heading"><strong className="text-gold-400">Note:</strong> You can upload a maximum of 2 profile photos. Each photo must be less than 5 MB and in JPG, JPEG, PNG, or WEBP format. All uploaded photos are screened according to <Link href="/community-guidelines#photo-guidelines" className="font-semibold text-gold-400 underline underline-offset-2 hover:text-gold-300">Photo Guidelines</Link>. New uploads and photo changes remain private until approved.</p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-zinc-400"><span className="font-semibold text-white">{images.length}</span> of {MAX_PROFILE_PHOTOS} photos uploaded</p>
+              {galleryLoaded ? <div className="space-y-1 text-sm text-zinc-400"><p><span className="font-semibold text-white">{images.length}</span> of {MAX_PROFILE_PHOTOS} photo slots occupied</p><p className="text-xs">Photo changes remaining: <span className="font-semibold text-gold-400">{replacementsRemaining}</span></p></div> : <p className="text-sm text-zinc-400">Photo availability has not been verified.</p>}
               <button type="button" onClick={() => void loadGallery()} className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"><RefreshCw className="h-4 w-4" />Refresh status</button>
             </div>
 
-            {loading ? <div className="flex min-h-64 items-center justify-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-400"><Loader2 className="h-6 w-6 animate-spin text-gold-500" />Loading your photos…</div> : (
+            {loading ? <div className="flex min-h-64 items-center justify-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-400"><Loader2 className="h-6 w-6 animate-spin text-gold-500" />Loading your photos…</div> : !galleryLoaded ? <p className="rounded-xl border border-zinc-800 p-4 text-sm text-zinc-400">We could not load your existing photos. Uploads are paused until they can be checked. Use Refresh status to try again.</p> : (
               <div className="grid gap-5 sm:grid-cols-2">
                 {Array.from({ length: MAX_PROFILE_PHOTOS }, (_, index) => {
                   const image = images[index];
                   if (!image) return (
-                    <button key={`empty-${index}`} type="button" onClick={() => uploadInputRef.current?.click()} disabled={uploading || images.length >= MAX_PROFILE_PHOTOS} className="group flex min-h-96 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/30 p-8 text-center hover:border-gold-500/50 hover:bg-gold-500/5 disabled:cursor-not-allowed disabled:opacity-60">
+                    <button key={`empty-${index}`} type="button" onClick={() => { setReplaceTargetId(null); uploadInputRef.current?.click(); }} disabled={uploading || images.length >= MAX_PROFILE_PHOTOS} className="group flex min-h-96 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/30 p-8 text-center hover:border-gold-500/50 hover:bg-gold-500/5 disabled:cursor-not-allowed disabled:opacity-60">
                       {uploading ? <Loader2 className="h-9 w-9 animate-spin text-gold-500" /> : <Upload className="h-9 w-9 text-zinc-500 group-hover:text-gold-500" />}
                       <span><span className="block font-semibold text-zinc-200">{uploading ? 'Uploading photo…' : 'Upload photo'}</span><span className="mt-1 block text-xs text-zinc-500">JPG, JPEG, PNG or WEBP · Under 5 MB</span></span>
                     </button>
@@ -235,8 +254,10 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
                       </div>
                       <div className="space-y-3 p-4">
                         <div className="flex items-center gap-2 text-xs text-zinc-400"><ShieldCheck className="h-4 w-4 text-gold-500" />Visibility is managed in Settings</div>
+                        {image.pending_replacement ? <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2"><img src={image.pending_replacement.thumbnail_url || image.pending_replacement.image_url} alt="Pending replacement preview" className="h-12 w-12 rounded-lg object-cover" /><span className="text-xs text-amber-200">Pending Approval<br /><span className="text-[10px] text-amber-300/70">Current photo stays active until review</span></span></div> : null}
                         <div className="flex gap-2">
                           {!image.is_profile_picture && image.moderation_status === 'approved' ? <button type="button" onClick={() => void handleSetProfilePicture(image.id)} disabled={busy} className="flex-1 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-gold-500/50 hover:text-gold-400 disabled:opacity-50">Set as profile photo</button> : null}
+                          <button type="button" onClick={() => { setReplaceTargetId(image.id); uploadInputRef.current?.click(); }} disabled={busy || uploading || replacementsRemaining <= 0 || Boolean(image.pending_replacement) || image.moderation_status === 'pending'} className="flex-1 rounded-lg border border-gold-500/40 px-3 py-2 text-xs font-semibold text-gold-300 hover:bg-gold-500/10 disabled:cursor-not-allowed disabled:opacity-40">Change photo</button>
                           <div className="flex rounded-lg border border-zinc-800 bg-zinc-950"><button type="button" onClick={() => void handleReorder(index, 'left')} disabled={busy || index === 0} aria-label="Move photo left" className="p-2 text-zinc-400 hover:text-white disabled:opacity-25"><ArrowLeft className="h-4 w-4" /></button><button type="button" onClick={() => void handleReorder(index, 'right')} disabled={busy || index === images.length - 1} aria-label="Move photo right" className="p-2 text-zinc-400 hover:text-white disabled:opacity-25"><ArrowRight className="h-4 w-4" /></button></div>
                           <button type="button" onClick={() => void handleDelete(image.id)} disabled={busy} aria-label="Delete photo" className="rounded-lg border border-red-900/50 p-2 text-red-400 hover:bg-red-950/50 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
                         </div>
@@ -246,7 +267,8 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
                 })}
               </div>
             )}
-            {images.length >= MAX_PROFILE_PHOTOS ? <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-300"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-gold-500" />You have reached the 2-photo limit. Delete an existing photo before uploading the latest photo.</div> : null}
+            {images.length >= MAX_PROFILE_PHOTOS ? <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-300"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-gold-500" />You can upload a maximum of 2 profile photos.</div> : null}
+            {replacementsRemaining <= 0 ? <div className="flex items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-200"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />You have reached the maximum of 3 photo changes.</div> : null}
             <input ref={uploadInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="sr-only" aria-label="Choose a profile photo to upload" />
           </section>
         ) : (
@@ -270,6 +292,7 @@ export default function MyPhotosExperience({ embedded = false }: { embedded?: bo
           </section>
         )}
       </div>
+      {selectedFile ? <PhotoCropEditor file={selectedFile} onCancel={() => { setSelectedFile(null); setReplaceTargetId(null); }} onConfirm={handleCropConfirm} /> : null}
     </section>
   );
 }

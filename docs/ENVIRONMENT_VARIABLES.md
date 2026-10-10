@@ -25,6 +25,7 @@ CLOUDFLARE_R2_URL=https://your_account_id.r2.cloudflarestorage.com
 R2_PROFILE_PHOTOS_BUCKET=your_photos_bucket
 R2_HOROSCOPES_BUCKET=your_horoscopes_bucket
 R2_ID_PROOFS_BUCKET=your_id_proofs_bucket
+R2_PHOTO_SIGNED_URL_TTL_SECONDS=180
 
 # RAZORPAY CONFIG
 NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
@@ -37,3 +38,4 @@ In Vercel (or your hosting provider), ensure the following are securely set:
 - Use the production Razorpay keys instead of test keys.
 - Ensure `SUPABASE_SERVICE_ROLE_KEY` is completely hidden and not leaked to the frontend.
 - Keep every `CLOUDFLARE_R2_*` and `R2_*_BUCKET` variable server-only; never prefix them with `NEXT_PUBLIC_`.
+- `R2_PHOTO_SIGNED_URL_TTL_SECONDS` is also server-only and is capped to 30–300 seconds by the application.

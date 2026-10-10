@@ -38,12 +38,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const displayPath = `${account.data.auth_user_id}/${uploadId}/display.webp`;
   const contentType = ext === 'pdf' ? 'application/pdf' : ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
   const storedPaths: string[] = [];
+  let photoVariants: Awaited<ReturnType<typeof createPhotoVariants>> | null = null;
   try {
     if (kind === 'photo') {
-      const variants = await createPhotoVariants(bytes);
-      await putR2Object(bucket, thumbnailPath, variants.thumbnail, PHOTO_VARIANT_CONTENT_TYPE);
+      photoVariants = await createPhotoVariants(bytes);
+      await putR2Object(bucket, thumbnailPath, photoVariants.thumbnail, PHOTO_VARIANT_CONTENT_TYPE);
       storedPaths.push(thumbnailPath);
-      await putR2Object(bucket, displayPath, variants.display, PHOTO_VARIANT_CONTENT_TYPE);
+      await putR2Object(bucket, displayPath, photoVariants.display, PHOTO_VARIANT_CONTENT_TYPE);
       storedPaths.push(displayPath);
     } else {
       await putR2Object(bucket, path, bytes, contentType);
@@ -59,6 +60,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (attached.error) {
       if (storedPaths.length) await deleteR2Objects(bucket, storedPaths).catch(() => undefined);
       return NextResponse.json({ error: 'Could not attach photo. Check the two-photo limit and retry.' }, { status: 409 });
+    }
+    if (!photoVariants) return NextResponse.json({ error: 'Photo processing failed. Retry the upload.' }, { status: 503 });
+    const metadataSaved = await supabaseAdmin.from('gallery_images').update({
+      image_format: 'webp',
+      thumbnail_width: photoVariants.thumbnailMetadata.width,
+      thumbnail_height: photoVariants.thumbnailMetadata.height,
+      thumbnail_bytes: photoVariants.thumbnailMetadata.bytes,
+      display_width: photoVariants.displayMetadata.width,
+      display_height: photoVariants.displayMetadata.height,
+      display_bytes: photoVariants.displayMetadata.bytes,
+    }).eq('id', attached.data.id).select('id').maybeSingle();
+    if (metadataSaved.error || !metadataSaved.data) {
+      await deleteR2Objects(bucket, storedPaths).catch(() => undefined);
+      await supabaseAdmin.from('gallery_images').delete().eq('id', attached.data.id);
+      return NextResponse.json({ error: 'Could not save photo metadata. Retry the upload.' }, { status: 503 });
     }
     if (attached.data.moderation_status !== 'approved') {
       const reviewed = await supabaseAdmin.rpc('review_member_photo', { actor: access.user.id, photo_id: attached.data.id, decision: 'approved' });

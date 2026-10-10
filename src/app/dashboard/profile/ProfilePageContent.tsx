@@ -153,7 +153,7 @@ export default function ProfilePageContent() {
         setProfile(profileResult.data);
         setPreferences(preferenceResult.data);
         setUserInfo({ email: userRow?.email || user.email || null, mobile_number: userRow?.mobile_number || null });
-        setProfilePhoto(galleryResult.data?.thumbnail_url || galleryResult.data?.image_url || profileResult.data?.profile_picture_url || null);
+        setProfilePhoto(galleryResult.data?.thumbnail_url || galleryResult.data?.image_url || null);
       } catch (loadError) {
         console.error('Error fetching user profile:', loadError);
         if (active) setError('We could not load your profile right now. Please try again.');

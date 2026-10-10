@@ -17,6 +17,10 @@ const bucketEnv: Record<StorageBucket, string | undefined> = {
 const endpoint = process.env.CLOUDFLARE_R2_URL?.trim();
 const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID?.trim();
 const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY?.trim();
+const configuredPhotoTtl = Number(process.env.R2_PHOTO_SIGNED_URL_TTL_SECONDS || 180);
+export const PHOTO_SIGNED_URL_TTL_SECONDS = Number.isFinite(configuredPhotoTtl)
+  ? Math.min(300, Math.max(30, Math.floor(configuredPhotoTtl)))
+  : 180;
 
 const client = endpoint && accessKeyId && secretAccessKey
   ? new S3Client({
@@ -56,7 +60,7 @@ export async function putR2Object(
     Key: path,
     Body: body,
     ContentType: contentType,
-    CacheControl: 'private, no-store',
+    CacheControl: 'private, max-age=120, must-revalidate',
   }));
 }
 
@@ -73,7 +77,7 @@ export async function getR2Object(bucket: StorageBucket, path: string) {
   };
 }
 
-export async function getR2SignedUrl(bucket: StorageBucket, path: string, expiresIn = 300) {
+export async function getR2SignedUrl(bucket: StorageBucket, path: string, expiresIn = PHOTO_SIGNED_URL_TTL_SECONDS) {
   assertStoragePath(path);
   return getSignedUrl(
     getClient(),

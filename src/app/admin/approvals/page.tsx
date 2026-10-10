@@ -53,28 +53,15 @@ export default function AdminApprovalsPage() {
       const { data: reports } = await safetyService.adminGetAbuseReports();
       setReportsQueue(reports || []);
 
-      // 4. Fetch pending photos
-      const { data: photos } = await supabase
-        .from('gallery_images')
-        .select('*');
-      
-      const enrichedPhotos = [];
-      if (photos) {
-        for (const photo of photos) {
-          const { data: pInfo } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, profile_id')
-            .eq('user_id', photo.user_id)
-            .maybeSingle();
-          
-          enrichedPhotos.push({
-            ...photo,
-            userName: pInfo ? `${pInfo.first_name} ${pInfo.last_name}` : 'Unknown User',
-            userId: pInfo?.profile_id || 'GV-PENDING'
-          });
-        }
-      }
-      setPhotosQueue(enrichedPhotos.filter((ph: any) => ph.moderation_status === 'pending' || !ph.moderation_status));
+      // 4. Fetch pending photos through the MFA-protected backend queue.
+      const photoResponse = await fetch('/api/admin/photos?status=pending', { cache: 'no-store' });
+      const photoResult = await photoResponse.json().catch(() => null);
+      if (!photoResponse.ok) throw new Error(photoResult?.error || 'Could not load pending photos.');
+      setPhotosQueue((photoResult?.photos || []).map((photo: any) => ({
+        ...photo,
+        userName: `${photo.first_name || 'Unknown'} ${photo.last_name || 'User'}`.trim(),
+        userId: photo.profile_id || 'GV-PENDING',
+      })));
 
       // 5. Fetch deletion requests
       const { data: deletions } = await supabase
@@ -205,17 +192,9 @@ export default function AdminApprovalsPage() {
 
   const handleApprovePhoto = async (photo: any) => {
     try {
-      const { error } = await supabase
-        .from('gallery_images')
-        .update({ moderation_status: 'approved', moderated_at: new Date().toISOString() })
-        .eq('id', photo.id);
-
-      if (error) throw error;
-
-      await supabase.from('activity_logs').insert({
-        action: 'MODERATOR_APPROVE_PHOTO',
-        metadata: { image_id: photo.id, target_user_id: photo.user_id }
-      });
+      const response = await fetch('/api/admin/photos', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photoId: photo.id, action: 'approve' }) });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Photo approval failed.');
 
       alert('Photo approved successfully.');
       fetchModerationData();
@@ -226,17 +205,11 @@ export default function AdminApprovalsPage() {
 
   const handleRejectPhoto = async (photo: any) => {
     try {
-      const { error } = await supabase
-        .from('gallery_images')
-        .delete()
-        .eq('id', photo.id);
-
-      if (error) throw error;
-
-      await supabase.from('activity_logs').insert({
-        action: 'MODERATOR_REJECT_PHOTO',
-        metadata: { image_id: photo.id, target_user_id: photo.user_id }
-      });
+      const reason = prompt('Enter the rejection reason (required):');
+      if (reason === null || !reason.trim()) return;
+      const response = await fetch('/api/admin/photos', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photoId: photo.id, action: 'reject', reason: reason.trim() }) });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Photo rejection failed.');
 
       alert('Photo rejected and removed from gallery.');
       fetchModerationData();
@@ -608,7 +581,7 @@ export default function AdminApprovalsPage() {
                         {/* Photo Display Container */}
                         <div className="w-full h-44 rounded-xl bg-surface flex items-center justify-center overflow-hidden border border-border mt-1 relative select-none">
                           <img 
-                            src={photo.image_url} 
+                            src={photo.preview_url || photo.image_url}
                             alt="Awaiting Moderation" 
                             className="w-full h-full object-cover pointer-events-none"
                           />

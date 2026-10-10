@@ -14,16 +14,17 @@ export default function AdminGalleryModeration() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'flagged'>('pending');
 
   useEffect(() => {
     fetchQueue();
-  }, []);
+  }, [statusFilter]);
 
   const fetchQueue = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await galleryService.adminGetPendingGallery();
+      const { data, error: err } = await galleryService.adminGetPendingGallery(statusFilter);
       if (err) throw err;
       setQueue(data || []);
     } catch (err: any) {
@@ -55,8 +56,9 @@ export default function AdminGalleryModeration() {
       if (reason === null) return; // Cancel
       note = reason.trim() || 'Violates profile photo guidelines.';
     } else if (action === 'reject') {
-      const confirmReject = confirm('Rejecting this photo will permanently remove it from the user\'s gallery and delete the file. Proceed?');
-      if (!confirmReject) return;
+      const reason = prompt('Enter the rejection reason (required):');
+      if (reason === null || !reason.trim()) return;
+      note = reason.trim();
     }
 
     setActionLoading(image.id);
@@ -64,7 +66,7 @@ export default function AdminGalleryModeration() {
       const { success: ok, error: modErr } = await galleryService.adminProcessGallery(image.id, action, note);
       if (modErr) throw modErr;
 
-      showToast(`Photo successfully ${action === 'approve' ? 'approved' : action === 'reject' ? 'deleted' : 'flagged'}.`);
+      showToast(`Photo successfully ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'flagged'}.`);
       fetchQueue();
     } catch (err: any) {
       console.error(err);
@@ -95,6 +97,11 @@ export default function AdminGalleryModeration() {
           </div>
           
           <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-muted">Status
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="rounded-lg border border-border bg-surface px-2 py-2 text-xs text-foreground">
+                <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="flagged">Flagged</option>
+              </select>
+            </label>
             <Link 
               href="/admin/dashboard"
               className="px-3.5 py-2 rounded-lg border border-border bg-surface hover:bg-background text-muted hover:text-foreground text-xs font-semibold tracking-wider transition-colors cursor-pointer"
@@ -155,7 +162,7 @@ export default function AdminGalleryModeration() {
                   {/* Photo Preview Container */}
                   <div className="relative aspect-[3/4] bg-background flex items-center justify-center overflow-hidden border-b border-border">
                     <img 
-                      src={image.image_url} 
+                      src={(image as any).preview_url || image.image_url}
                       alt="Pending approval"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
                     />
@@ -177,6 +184,7 @@ export default function AdminGalleryModeration() {
                           {image.first_name} {image.last_name}
                         </span>
                       </div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted"><span className="rounded bg-surface px-2 py-1">{(image as any).is_replacement ? 'Replacement' : 'New photo'}</span><span className="rounded bg-surface px-2 py-1">{image.moderation_status}</span></div>
                       <div className="flex items-center justify-between text-[10px] font-mono text-muted mt-1">
                         <span className="text-primary font-semibold">ID: {image.profile_id}</span>
                         <span className="flex items-center gap-1 text-muted/80">
@@ -201,7 +209,7 @@ export default function AdminGalleryModeration() {
                         onClick={() => handleModeration(image, 'reject')}
                         disabled={isLoading}
                         className="flex-1 h-9 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
-                        title="Delete photo permanently"
+                        title="Reject photo and notify the member"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Reject
                       </button>

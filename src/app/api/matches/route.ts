@@ -35,7 +35,13 @@ export async function GET(request: Request) {
     if (searchEnabled && filters.profession) query = query.ilike('education', `%${filters.profession}%`);
     const { data, error } = await query.limit(500);
     if (error) throw error;
-    return NextResponse.json({ profiles: (data || []).filter((row: any) => !blocked.has(row.user_id)).map((row: any) => ({ ...row, is_premium: false })) }, { headers: { 'Cache-Control': 'no-store' } });
+    const visibleUserIds = (data || []).map((row: any) => row.user_id);
+    const { data: approvedPhotos, error: photoError } = visibleUserIds.length
+      ? await supabaseAdmin.from('gallery_images').select('user_id,image_url,thumbnail_url').in('user_id', visibleUserIds).eq('is_profile_picture', true).eq('moderation_status', 'approved').is('deleted_at', null)
+      : { data: [], error: null };
+    if (photoError) throw photoError;
+    const photoMap = new Map((approvedPhotos || []).map((photo: any) => [photo.user_id, photo.thumbnail_url || photo.image_url]));
+    return NextResponse.json({ profiles: (data || []).filter((row: any) => !blocked.has(row.user_id)).map((row: any) => ({ ...row, image_url: photoMap.get(row.user_id) || null, is_premium: false })) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Matches API failed', error);
     return NextResponse.json({ error: 'Could not load matches.' }, { status: 500 });

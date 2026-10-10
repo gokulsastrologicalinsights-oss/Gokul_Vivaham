@@ -43,7 +43,6 @@ export const uploadService = {
   },
   async getSignedUrl(bucket: Bucket,path: string,expiresIn=300) {
     try {
-      if (bucket === 'photos' && path.startsWith('https://')) return {url:path,error:null};
       if (!/^[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/(?:thumbnail|display)\.webp|[^/]{1,120}\.(pdf|jpg|png|webp))$/.test(path)) throw new Error('Invalid private document path.');
       const {data:{session}}=await supabase.auth.getSession();
       if (!session) throw new Error('Please sign in again.');

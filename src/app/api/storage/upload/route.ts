@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authLib } from '@/lib/auth';
 import { putR2Object, type StorageBucket } from '@/lib/r2';
-import { createPhotoVariants, PHOTO_MAX_UPLOAD_BYTES, PHOTO_VARIANT_CONTENT_TYPE } from '@/lib/photo-processing';
+import { assertPhotoDimensions, createPhotoVariants, PHOTO_MAX_UPLOAD_BYTES, PHOTO_VARIANT_CONTENT_TYPE } from '@/lib/photo-processing';
 
 export const runtime = 'nodejs';
 
@@ -25,7 +25,8 @@ function validBucket(value: unknown): value is StorageBucket {
 function detectExtension(bytes: Uint8Array) {
   if (bytes.subarray(0, 3).every((value, index) => value === [255, 216, 255][index])) return 'jpg';
   if (bytes.subarray(0, 8).every((value, index) => value === [137, 80, 78, 71, 13, 10, 26, 10][index])) return 'png';
-  if (new TextDecoder().decode(bytes.subarray(0, 12)) === 'RIFF' && new TextDecoder().decode(bytes.subarray(8, 12)) === 'WEBP') return 'webp';
+  const ascii = (start: number, end: number) => new TextDecoder().decode(bytes.subarray(start, end));
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'webp';
   if (new TextDecoder().decode(bytes.subarray(0, 5)) === '%PDF-') return 'pdf';
   return null;
 }
@@ -54,7 +55,13 @@ export async function POST(request: Request) {
   const path = `${user.id}/${uploadId}.${extension}`;
   try {
     if (bucketValue === 'photos') {
-      const { thumbnail, display } = await createPhotoVariants(bytes);
+      try {
+        await assertPhotoDimensions(bytes);
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Photo dimensions are not supported.' }, { status: 400 });
+      }
+      const variants = await createPhotoVariants(bytes);
+      const { thumbnail, display } = variants;
       const thumbnailPath = `${user.id}/${uploadId}/thumbnail.webp`;
       const displayPath = `${user.id}/${uploadId}/display.webp`;
       await putR2Object(bucketValue, thumbnailPath, thumbnail, PHOTO_VARIANT_CONTENT_TYPE);
@@ -66,7 +73,14 @@ export async function POST(request: Request) {
         throw error;
       }
       return NextResponse.json(
-        { url: displayPath, displayUrl: displayPath, thumbnailUrl: thumbnailPath },
+        {
+          url: displayPath,
+          displayUrl: displayPath,
+          thumbnailUrl: thumbnailPath,
+          format: PHOTO_VARIANT_CONTENT_TYPE,
+          thumbnail: variants.thumbnailMetadata,
+          display: variants.displayMetadata,
+        },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }
