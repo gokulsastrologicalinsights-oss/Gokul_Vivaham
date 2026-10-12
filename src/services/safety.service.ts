@@ -171,22 +171,21 @@ export const safetyService = {
         .order('created_at', { ascending: false });
 
       if (error || !data) return { data: [], error };
-
-      const enriched = await Promise.all(
-        data.map(async (row) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, profile_id')
-            .eq('user_id', row.blocked_user_id)
-            .maybeSingle();
-            
-          return {
-            ...row,
-            blocked_profile_id: profile?.profile_id || 'GV-UNKNOWN',
-            blocked_name: profile ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Unknown Member'
-          };
-        })
-      );
+      const summaryResponse = await fetch('/api/profiles/summaries', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: data.map((row) => row.blocked_user_id) }),
+      });
+      const summaryResult = await summaryResponse.json();
+      if (!summaryResponse.ok) return { data: [], error: new Error(summaryResult.error || 'Could not load blocked members.') };
+      const profiles = summaryResult.profiles || [];
+      const enriched = data.map((row) => {
+        const profile = profiles.find((item: any) => item.user_id === row.blocked_user_id);
+        return {
+          ...row,
+          blocked_profile_id: profile?.profile_id || 'GV-UNKNOWN',
+          blocked_name: profile ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Unknown Member'
+        };
+      });
 
       return { data: enriched, error: null };
     } catch (err: any) {

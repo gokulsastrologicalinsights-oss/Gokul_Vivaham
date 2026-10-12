@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const extension = detectExtension(bytes);
-  if (!extension || extension !== extensions[file.type] || (bucketValue === 'horoscopes' && extension !== 'pdf') || (bucketValue !== 'horoscopes' && extension === 'pdf'))
+  if (!extension || extension !== extensions[file.type] || (bucketValue === 'horoscopes' && extension !== 'pdf') || (bucketValue === 'photos' && extension === 'pdf'))
     return NextResponse.json({ error: 'The file contents do not match the selected file type.' }, { status: 400 });
 
   const uploadId = crypto.randomUUID();

@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { paymentService } from '@/services/payment.service';
 import { razorpayClient, webhooksConfigured } from '@/lib/payments/config';
+import { createHash } from 'node:crypto';
+
+type RazorpayPaymentEntity = {
+  id: string;
+  order_id?: string | null;
+  amount: number;
+};
+
+type RazorpaySubscriptionEntity = { id: string };
+
+type RazorpayWebhookPayload = {
+  event?: string;
+  payload?: {
+    payment?: { entity?: RazorpayPaymentEntity };
+    subscription?: { entity?: RazorpaySubscriptionEntity };
+  };
+};
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export async function POST(req: Request) {
   if (!webhooksConfigured) return NextResponse.json({ error: 'Payment webhooks are not configured.' }, { status: 503 });
@@ -21,13 +42,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 });
     }
 
-    const payload = JSON.parse(rawBody);
+    const payload = JSON.parse(rawBody) as RazorpayWebhookPayload;
     const event = payload.event;
-    const eventId = payload.id;
-
-    if (!eventId) {
-      return NextResponse.json({ error: 'Missing event ID in payload' }, { status: 400 });
-    }
+    if (typeof event !== 'string' || !event) return NextResponse.json({ error: 'Missing event type in payload' }, { status: 400 });
+    const providerEventId = req.headers.get('x-razorpay-event-id');
+    const eventId = providerEventId || `body_${createHash('sha256').update(rawBody).digest('hex')}`;
 
     console.log(`[Webhook Received Event] ${event} (ID: ${eventId})`);
 
@@ -75,9 +94,9 @@ export async function POST(req: Request) {
       } else if (event === 'payment.failed') {
         await handlePaymentFailed(payload);
       } else if (event === 'subscription.activated') {
-        await handleSubscriptionActivated(payload);
+        await handleSubscriptionActivated();
       } else if (event === 'subscription.charged') {
-        await handleSubscriptionCharged(payload);
+        await handleSubscriptionCharged();
       } else if (
         event === 'subscription.halted' ||
         event === 'subscription.cancelled' ||
@@ -96,30 +115,32 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ received: true });
 
-    } catch (processErr: any) {
+    } catch (processErr: unknown) {
       console.error(`[Webhook Error] Processing failed for event ${eventId}:`, processErr);
+      const message = errorMessage(processErr, 'Unknown processing error');
 
       // Mark event as failed in db
       await supabaseAdmin
         .from('processed_webhook_events')
         .update({
           status: 'failed',
-          error_message: processErr.message || 'Unknown processing error',
+          error_message: message,
           processed_at: new Date().toISOString()
         })
         .eq('event_id', eventId);
 
-      return NextResponse.json({ error: processErr.message || 'Event processing failed' }, { status: 500 });
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Webhook Endpoint Initial Error:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err, 'Internal Server Error') }, { status: 500 });
   }
 }
 
-async function handlePaymentCaptured(payload: any) {
-  const paymentEntity = payload.payload.payment.entity;
+async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
+  const paymentEntity = payload.payload?.payment?.entity;
+  if (!paymentEntity?.id || !Number.isFinite(paymentEntity.amount)) throw new Error('Malformed payment payload');
   const razorpay_order_id = paymentEntity.order_id;
   const razorpay_payment_id = paymentEntity.id;
 
@@ -168,17 +189,19 @@ async function handlePaymentCaptured(payload: any) {
   if (error) throw error;
 }
 
-async function handlePaymentFailed(payload: any) {
-  const paymentEntity = payload.payload.payment.entity;
+async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
+  const paymentEntity = payload.payload?.payment?.entity;
+  if (!paymentEntity) throw new Error('Malformed failed-payment payload');
   const razorpay_order_id = paymentEntity.order_id;
 
   if (!razorpay_order_id) return;
 
   const { data: updatedPay } = await supabaseAdmin
     .from('payments')
-    .select()
+    .update({ status: 'failed', updated_at: new Date().toISOString() })
     .eq('razorpay_order_id', razorpay_order_id)
     .eq('status', 'pending')
+    .select('id,user_id')
     .maybeSingle();
 
   if (updatedPay) {
@@ -187,25 +210,26 @@ async function handlePaymentFailed(payload: any) {
       .insert({
         user_id: updatedPay.user_id,
         title: 'Payment Failed',
-        message: 'This payment attempt failed. You can retry the same checkout order.',
+        message: 'This payment attempt failed. No membership benefits were activated. Please start a new checkout to try again.',
         type: 'billing',
         is_read: false
       });
   }
 }
 
-async function handleSubscriptionActivated(payload: any) {
+async function handleSubscriptionActivated() {
   // Activation confirms a mandate, not a captured renewal charge.
   // Access is granted only by the charged-payment handler.
   return;
 }
 
-async function handleSubscriptionCharged(payload: any) {
+async function handleSubscriptionCharged() {
   throw new Error('Automatic renewal fulfillment is not configured; reconcile this captured charge before granting access.');
 }
 
-async function handleSubscriptionDeactivated(payload: any, eventType: string) {
-  const subscriptionEntity = payload.payload.subscription.entity;
+async function handleSubscriptionDeactivated(payload: RazorpayWebhookPayload, eventType: string) {
+  const subscriptionEntity = payload.payload?.subscription?.entity;
+  if (!subscriptionEntity?.id) throw new Error('Malformed subscription payload');
   const razorpay_subscription_id = subscriptionEntity.id;
 
   // Find subscription record in database
@@ -233,6 +257,16 @@ async function handleSubscriptionDeactivated(payload: any, eventType: string) {
       updated_at: new Date().toISOString()
     })
     .eq('id', subscription.id);
+
+  await supabaseAdmin.from('membership_audit_logs').insert({
+    action: 'provider_subscription_deactivated',
+    target_user_id: dbUserId,
+    subscription_id: subscription.id,
+    plan_id: subscription.plan_id,
+    previous_values: subscription,
+    new_values: { ...subscription, payment_status: statusValue },
+    reason: eventType,
+  });
 
   // Role Downgrade Check:
   // Check if there are OTHER active subscriptions or featured boosts
@@ -264,17 +298,6 @@ async function handleSubscriptionDeactivated(payload: any, eventType: string) {
       .update({ role: 'user' })
       .eq('id', dbUserId);
 
-    const { data: userRow } = await supabaseAdmin
-      .from('users')
-      .select('auth_user_id')
-      .eq('id', dbUserId)
-      .maybeSingle();
-
-    if (userRow?.auth_user_id) {
-      await supabaseAdmin.auth.admin.updateUserById(userRow.auth_user_id, {
-        user_metadata: { role: 'user' }
-      });
-    }
   }
 
   // Set user notification

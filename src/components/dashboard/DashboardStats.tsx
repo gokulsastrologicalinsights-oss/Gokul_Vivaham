@@ -106,7 +106,7 @@ export default function DashboardStats() {
       <StatCard
         icon={<Star className="h-3.5 w-3.5 text-emerald-500" />}
         label="Horoscope Reports"
-        used={entitlements.horoscope_used}
+        used={entitlements.horoscope_used + (entitlements.horoscope_reserved || 0)}
         limit={entitlements.horoscope_limit}
         limitLabel="reports"
         accentClass="bg-emerald-500"
@@ -114,7 +114,7 @@ export default function DashboardStats() {
       <StatCard
         icon={<FileText className="h-3.5 w-3.5 text-sky-500" />}
         label="Consultations"
-        used={entitlements.consultations_used}
+        used={entitlements.consultations_used + (entitlements.consultations_reserved || 0)}
         limit={entitlements.consultations_limit}
         limitLabel="sessions"
         accentClass="bg-sky-500"
@@ -128,7 +128,7 @@ export default function DashboardStats() {
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-3xl font-mono font-black text-amber-600 dark:text-amber-400">
-            {entitlements.days_remaining > 0 ? `${entitlements.days_remaining}d` : '—'}
+            {entitlements.is_lifetime ? 'Lifetime' : (entitlements.days_remaining || 0) > 0 ? `${entitlements.days_remaining}d` : 'Expired'}
           </span>
           <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
             {entitlements.plan_name}

@@ -121,7 +121,7 @@ export default function Home() {
                   <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Browse Profiles
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Verified Badge
+                  <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Verified Badge (subject to profile verification)
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Send and Receive Interests & Messages
@@ -171,7 +171,7 @@ export default function Home() {
                   <CheckCircle2 className="h-4 w-4 text-gold-500 shrink-0" /> Browse Profiles
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-gold-500 shrink-0" /> Verified Badge
+                  <CheckCircle2 className="h-4 w-4 text-gold-500 shrink-0" /> Verified Badge (subject to profile verification)
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-gold-500 shrink-0" /> Send and Receive Interests & Messages
@@ -219,7 +219,7 @@ export default function Home() {
                   <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Browse Profiles
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Verified Badge
+                  <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Verified Badge (subject to profile verification)
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-maroon-500 shrink-0" /> Send and Receive Interests & Messages

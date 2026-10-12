@@ -12,8 +12,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let generation = 0;
     let previousUserId: string | undefined;
+    let lastSessionKey: string | null | undefined;
     let active = true;
     const synchronize = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
+      const sessionKey = session?.access_token ?? null;
+      if (lastSessionKey === sessionKey) {
+        if (active) setLoading(false);
+        return;
+      }
+      lastSessionKey = sessionKey;
       const current = ++generation;
       if (previousUserId !== session?.user.id) resetMemberStores();
       previousUserId = session?.user.id;
@@ -37,7 +44,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       void synchronize(session);
     });
-    void supabase.auth.getSession().then(({ data }) => synchronize(data.session));
+    void supabase.auth.getSession()
+      .then(({ data }) => synchronize(data.session))
+      .catch(async (error: unknown) => {
+        console.warn('Discarding an invalid local authentication session.', error);
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch {
+          // The stale token may already have been removed by the auth client.
+        }
+        await synchronize(null);
+      });
     return () => { active = false; generation++; subscription.unsubscribe(); };
   }, [setSession, setLoading, setRole]);
   return <>{children}</>;

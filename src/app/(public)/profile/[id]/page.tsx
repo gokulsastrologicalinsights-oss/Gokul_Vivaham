@@ -44,24 +44,10 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<'contact' | 'horoscope' | 'consultation'>('contact');
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactRevealed, setContactRevealed] = useState(false);
 
   const { initiateCheckout, loading: checkoutLoading } = useCheckout();
-
-  const handleUnlockContact = () => {
-    if (!currentUser) {
-      alert('Please login to unlock contact details.');
-      router.push('/login');
-      return;
-    }
-    if (!profile) return;
-    initiateCheckout({
-      paymentType: 'contact_unlock',
-      targetProfileId: profile.id,
-      onSuccess: () => {
-        window.location.reload();
-      }
-    });
-  };
 
   useEffect(() => {
     const fetchProfileDetails = async () => {
@@ -70,18 +56,15 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
         const { data: { user } } = await supabase.auth.getUser();
         setCurrentUser(user);
 
-        // 1. Fetch the target profile by profile_id, joining users table for digital verification flags
-        let { data: profileData } = await supabase
-          .from('profiles')
-          .select('*, users(email_verified, mobile_verified)')
-          .eq('profile_id', id)
-          .maybeSingle();
-
-        if (!profileData && user) {
-          const {data:alias}=await supabase.from('profile_id_aliases').select('profile_uuid').eq('old_id',id).maybeSingle();
-          if(alias){const result=await supabase.from('profiles').select('*, users(email_verified, mobile_verified)').eq('id',alias.profile_uuid).maybeSingle();profileData=result.data;}
-        }
-        if (!profileData) {
+        // Profile-detail access is recorded and limited atomically by the server.
+        const profileResponse = await fetch(`/api/profiles/${encodeURIComponent(id)}`, { cache: 'no-store' });
+        const profilePayload = await profileResponse.json();
+        const profileData = profilePayload.profile;
+        if (!profileResponse.ok || !profileData) {
+          if (profilePayload.upgrade_required) {
+            setUpgradeFeature('contact');
+            setShowUpgradePrompt(true);
+          }
           setProfile(null);
           setLoading(false);
           return;
@@ -133,17 +116,7 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
           }
         }
 
-        // 3. Fetch all approved gallery images for this candidate
-        const { data: galleryList } = await supabase
-          .from('gallery_images')
-          .select('*')
-          .eq('user_id', profileData.user_id)
-          .eq('moderation_status', 'approved')
-          .is('deleted_at', null)
-          .order('sort_order', { ascending: true })
-          .order('uploaded_at', { ascending: true });
-
-        const imagesArray = galleryList || [];
+        const imagesArray = profilePayload.galleryImages || [];
         setGalleryImages(imagesArray);
 
         // Find primary profile photo or fall back to first image
@@ -154,46 +127,6 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
           imageUrl: primaryImg?.image_url || null
         });
 
-        // 4. Check contact visibility
-        if (user) {
-          try {
-            const res = await fetch('/api/profile/contact-details', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ profileId: id }),
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-              setContactDetails({
-                email: data.email || 'N/A',
-                phone: data.phone || 'N/A',
-                premiumLocked: false,
-                unlocked: data.unlocked || false
-              });
-            } else if (data.upgrade_required) {
-              // Credits exhausted — show upgrade modal
-              setContactDetails({ email: '🔒 Credits Exhausted', phone: '🔒 Credits Exhausted', premiumLocked: true, unlocked: false });
-            } else {
-              setContactDetails({
-                email: '🔒 Connection Gated',
-                phone: '🔒 Connection Gated',
-                premiumLocked: false,
-                unlocked: false
-              });
-            }
-          } catch (err) {
-            console.error('Error fetching contact details API:', err);
-            setContactDetails({
-              email: 'Error loading details',
-              phone: 'Error loading details',
-              premiumLocked: false,
-              unlocked: false
-            });
-          }
-        }
-
       } catch (err) {
         console.error('Error fetching candidate details:', err);
       } finally {
@@ -203,6 +136,52 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
 
     fetchProfileDetails();
   }, [id]);
+
+  const handleRevealContact = async () => {
+    if (!currentUser || !profile || contactLoading) return;
+    setContactLoading(true);
+    try {
+      const response = await fetch('/api/profile/contact-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileUuid: profile.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        if (data.upgrade_required) {
+          setContactDetails({ email: '🔒 Upgrade required', phone: '🔒 Upgrade required', premiumLocked: true, unlocked: false });
+          setUpgradeFeature('contact');
+          setShowUpgradePrompt(true);
+        } else {
+          alert(data.error || 'Contact details are unavailable.');
+        }
+        return;
+      }
+      setContactDetails({
+        email: data.email || 'N/A',
+        phone: data.phone || 'N/A',
+        premiumLocked: false,
+        unlocked: Boolean(data.purchased_unlock),
+      });
+      setContactRevealed(true);
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  const handleUnlockContact = () => {
+    if (!currentUser) {
+      alert('Please login to unlock contact details.');
+      router.push('/login');
+      return;
+    }
+    if (!profile) return;
+    initiateCheckout({
+      paymentType: 'contact_unlock',
+      targetProfileId: profile.id,
+      onSuccess: () => { void handleRevealContact(); }
+    });
+  };
 
   const handleConnect = async () => {
     if (!currentUser || !profile) {
@@ -599,7 +578,7 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : contactRevealed ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-light text-zinc-655 dark:text-zinc-400 animate-in fade-in duration-300">
                   <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-850 pb-2">
                     <Phone className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -609,6 +588,20 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
                     <Mail className="h-4 w-4 text-emerald-600 shrink-0" />
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">{contactDetails.email}</span>
                   </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 p-3 text-center">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Revealing this member for the first time uses one contact credit. Reopening the same contact during this membership does not use another credit.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRevealContact}
+                    disabled={contactLoading}
+                    className="rounded-lg bg-maroon-700 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white disabled:opacity-50"
+                  >
+                    {contactLoading ? 'Checking entitlement...' : 'Reveal Contact'}
+                  </button>
                 </div>
               )
             ) : (

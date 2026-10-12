@@ -21,6 +21,23 @@ type UnlockedContact = {
   profile?: { first_name: string; last_name?: string; profile_id: string };
 };
 
+function membershipFeatures(plan: any): string[] {
+  const key = String(plan.plan_key || plan.name || '').toLowerCase();
+  if (key.includes('startup')) return [
+    'Create a detailed profile', 'Browse match profiles', 'Receive interests and messages',
+    'Basic horoscope match percentage', 'Limited daily profile views',
+  ];
+  const shared = [
+    'Filter matches according to preferences', 'Browse profiles',
+    'Verified badge (subject to actual profile verification)', 'Send and receive interests and messages',
+    `View up to ${plan.contact_view_limit} contact numbers`, 'Unlimited horoscope match percentage',
+  ];
+  if (key.includes('silver')) return [...shared, 'One detailed horoscope matching report'];
+  if (key.includes('gold')) return [...shared, 'Up to 5 detailed horoscope matching reports', 'One included live/call horoscope consultation'];
+  if (key.includes('diamond')) return [...shared, 'Up to 10 detailed horoscope matching reports', 'Five included live/call horoscope consultations'];
+  return [];
+}
+
 export default function Subscription() {
   const { initiateCheckout, loading: checkoutLoading, error: checkoutError, setError: setCheckoutError } = useCheckout();
 
@@ -149,8 +166,8 @@ export default function Subscription() {
   };
 
   const getDaysTotal = () => {
-    if (!activeSub || !activeSub.plan) return 30;
-    return activeSub.plan.duration_days || 30;
+    if (!activeSub?.start_date || !activeSub?.end_date) return 1;
+    return Math.max(1, Math.ceil((new Date(activeSub.end_date).getTime() - new Date(activeSub.start_date).getTime()) / 86_400_000));
   };
 
   const daysRemaining = getDaysRemaining();
@@ -244,7 +261,7 @@ export default function Subscription() {
             {activeSub ? 'Active Premium' : 'Free Account'}
           </span>
           <h2 className="text-xl font-serif font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-            {activeSub?.plan?.name || 'Free Basic Plan'}{' '}
+            {activeSub?.plan?.name || 'Startup Plan'}{' '}
             {activeSub && <Star className="h-5 w-5 text-gold-500 fill-gold-500" />}
           </h2>
           
@@ -277,7 +294,7 @@ export default function Subscription() {
               </>
             ) : (
               <div className="sm:col-span-2">
-                Upgrade to a premium plan to view phone contacts, access advanced filters, and chat directly with compatible partners.
+                Your free lifetime Startup membership is active. Upgrade to view phone contacts, use advanced filters, and send interests or messages.
               </div>
             )}
           </div>
@@ -366,10 +383,10 @@ export default function Subscription() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-2 items-stretch">
           {catalogPlans.map((planDef: any) => {
-            const isCurrent = currentPlanId === planDef.id;
+            const isCurrent = currentPlanId === planDef.id || (!activeSub && Number(planDef.price) === 0);
             const isPurchasingThis = purchasingPlanId === planDef.id && checkoutLoading;
             const isLower = Boolean(currentPlanId) && Number(planDef.price) < currentPlanPrice;
-            const featureValues = Array.isArray(planDef.features) ? planDef.features : Object.entries(planDef.features || {}).filter(([, value]) => value !== false && value !== 0 && value !== null).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${String(value)}`);
+            const featureValues = membershipFeatures(planDef);
 
             return (
               <div
@@ -388,6 +405,11 @@ export default function Subscription() {
                     Active
                   </div>
                 )}
+                {planDef.is_most_popular && !isCurrent && (
+                  <div className="absolute top-3 right-3 rounded-full bg-gold-500 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-sm">
+                    Most Popular
+                  </div>
+                )}
 
                 <div className="flex flex-col text-left gap-1">
                   <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest">Membership Package</span>
@@ -400,7 +422,9 @@ export default function Subscription() {
                       <span className="text-2xl font-serif font-extrabold text-zinc-900 dark:text-white">
                         ₹{Number(planDef.price || 0).toLocaleString('en-IN')}
                       </span>
-                      {Number(planDef.price) > 0 && <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">/ {planDef.duration_days} days</span>}
+                      <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">
+                        / {planDef.is_lifetime ? 'lifetime' : planDef.duration_unit === 'month' ? `${planDef.duration_value} months` : `${planDef.duration_value || planDef.duration_days} days`}
+                      </span>
                     </div>
                     {planDef.price > 0 && (
                       <div className="flex flex-col items-start leading-tight">
@@ -437,10 +461,11 @@ export default function Subscription() {
                     </button>
                   ) : isLower ? (
                     <button
-                      onClick={() => alert('Downgrade will become active after your current plan expires.')}
+                      onClick={() => handleUpgrade(planDef.name, planDef.id)}
+                      disabled={checkoutLoading}
                       className="w-full py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider hover:bg-zinc-50 dark:hover:bg-zinc-950/20 cursor-pointer focus:outline-none"
                     >
-                      Downgrade Tier
+                      {isPurchasingThis ? 'Processing...' : 'Switch Plan'}
                     </button>
                   ) : (
                     <button
@@ -464,6 +489,9 @@ export default function Subscription() {
             );
           })}
         </div>
+        <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-[11px] leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          Memberships renew manually. After a provider-verified plan purchase, the new paid plan starts immediately and replaces the prior paid entitlement period; unused credits do not carry over. Failed, pending, or cancelled payments grant no benefits.
+        </p>
       </div>
 
       {/* BILLING PROFILE & GSTIN EDITOR & TRANSACTION HISTORY GRID */}

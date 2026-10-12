@@ -103,7 +103,7 @@ export default function Interests() {
   };
 
   // Securely unlock contact details using API Route
-  const handleViewContacts = async (profileId: string) => {
+  const handleViewContacts = async (profileId: string, profileUuid: string | null) => {
     setUnlockingId(profileId);
     try {
       const response = await fetch('/api/profile/contact-details', {
@@ -111,7 +111,7 @@ export default function Interests() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ profileId }),
+        body: JSON.stringify(profileUuid ? { profileUuid } : { profileId }),
       });
 
       const resData = await response.json();
@@ -410,7 +410,7 @@ export default function Interests() {
 
                         {!contacts && (
                           <button
-                            onClick={() => handleViewContacts(item.profileId)}
+                            onClick={() => handleViewContacts(item.profileId, item.profileUuid)}
                             disabled={isUnlocking}
                             className="flex items-center gap-1.5 px-4 h-9.5 rounded-xl luxury-gradient text-white text-xs font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50 shadow hover:opacity-90 transition-all"
                           >

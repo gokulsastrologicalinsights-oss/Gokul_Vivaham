@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 
 export interface CheckoutParams {
@@ -18,6 +18,7 @@ export function useCheckout() {
   const { isAuthenticated, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const checkoutInFlight = useRef(false);
 
   const loadScript = (src: string): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -34,6 +35,8 @@ export function useCheckout() {
   };
 
   const initiateCheckout = async (params: CheckoutParams) => {
+    if (checkoutInFlight.current) return;
+    checkoutInFlight.current = true;
     setLoading(true);
     setError(null);
 
@@ -45,6 +48,7 @@ export function useCheckout() {
       // 1. Request Order Creation on Server
       let billingProfile = {};
       try { billingProfile = JSON.parse(localStorage.getItem(`gokul_billing_profile:${user?.id}`) || '{}'); } catch {}
+      const checkoutKey = crypto.randomUUID();
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: {
@@ -57,6 +61,7 @@ export function useCheckout() {
           bookingDetails: params.bookingDetails,
           featuredDays: params.featuredDays,
           targetProfileId: params.targetProfileId,
+          checkoutKey,
           billingProfile,
         }),
       });
@@ -105,6 +110,7 @@ export function useCheckout() {
             const verifyData = await verifyRes.json();
 
             if (verifyData.success) {
+              checkoutInFlight.current = false;
               setLoading(false);
               if (params.onSuccess) {
                 params.onSuccess(verifyData);
@@ -114,6 +120,7 @@ export function useCheckout() {
             }
           } catch (err: any) {
             setError(err.message || 'Payment verification failed');
+            checkoutInFlight.current = false;
             setLoading(false);
           }
         },
@@ -127,6 +134,12 @@ export function useCheckout() {
         },
         modal: {
           ondismiss: function () {
+            void fetch('/api/payments/mark-cancelled', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: orderData.orderId }),
+            });
+            checkoutInFlight.current = false;
             setLoading(false);
             if (params.onCancel) {
               params.onCancel();
@@ -139,6 +152,7 @@ export function useCheckout() {
 
       paymentObject.on('payment.failed', function (response: any) {
         setError(response.error?.description || 'Payment transaction failed at gateway level');
+        checkoutInFlight.current = false;
         setLoading(false);
       });
 
@@ -146,6 +160,7 @@ export function useCheckout() {
 
     } catch (err: any) {
       setError(err.message || 'An error occurred during checkout setup');
+      checkoutInFlight.current = false;
       setLoading(false);
     }
   };

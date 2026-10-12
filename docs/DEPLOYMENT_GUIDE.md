@@ -24,6 +24,6 @@ This document outlines the steps to deploy Gokul Vivaham to production using Ver
 5. Click **Deploy**. Vercel will automatically detect Next.js and build the application.
 
 ## 4. Post-Deployment Checks
-- Verify that image uploads work (Supabase Storage RLS policies).
+- Verify that authenticated image/document uploads reach the private R2 buckets and that Supabase metadata, RLS, and protected downloads still enforce member privacy. See `docs/R2_STORAGE_MIGRATION.md`.
 - Ensure the production URL is updated in Razorpay Webhooks.
 - Test user registration and the subscription checkout flow.

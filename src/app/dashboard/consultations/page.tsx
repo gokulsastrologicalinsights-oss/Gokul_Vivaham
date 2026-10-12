@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Calendar, Clock, CheckCircle2, AlertCircle, FileText, 
   MapPin, HelpCircle, User, Sparkles, ChevronRight, Video, 
@@ -9,11 +9,14 @@ import {
 import { ASTROLOGERS, Astrologer, getAstrologerById } from '@/constants/astrologers';
 import { consultationService } from '@/services/consultation.service';
 import { useCheckout } from '@/hooks/useCheckout';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import Toast from '@/components/ui/toast/Toast';
 import { supabase } from '@/lib/supabase';
 
 export default function UserConsultations() {
   const { initiateCheckout, loading: checkoutLoading, error: checkoutError, setError: setCheckoutError } = useCheckout();
+  const { entitlements, loading: entitlementsLoading, refresh: refreshEntitlements } = useEntitlements();
+  const includedRequestKey = useRef<string | null>(null);
 
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<'book' | 'my-bookings'>('book');
@@ -46,6 +49,7 @@ export default function UserConsultations() {
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [includedBookingLoading, setIncludedBookingLoading] = useState(false);
 
   // Initialize and resolve user ID
   useEffect(() => {
@@ -229,7 +233,7 @@ Thank you.`;
           finalFee
         });
 
-        setSuccessMsg('Consultation booked and payment verified successfully!');
+        setSuccessMsg('Payment verified. Your consultation request is pending team approval and scheduling.');
         setRedirectCountdown(3); // Start automatic redirect in 3 seconds
 
         // Reset selections
@@ -248,6 +252,56 @@ Thank you.`;
         console.log('Payment cancelled');
       }
     });
+  };
+
+  const handleIncludedConsultation = async () => {
+    if (includedBookingLoading) return;
+    if (!selectedDate || !consultationReason || !birthName || !birthDate || !birthTime || !birthPlace) {
+      setCheckoutError('Please complete all selection steps, including birth details.');
+      return;
+    }
+    if (consultationReason === 'Other' && !otherReason.trim()) {
+      setCheckoutError('Please explain your reason for consultation.');
+      return;
+    }
+
+    const finalReason = consultationReason === 'Other' ? `Other: ${otherReason}` : consultationReason;
+    const formattedNotes = `Name: ${birthName} | DOB: ${birthDate} | TOB: ${birthTime} | POB: ${birthPlace}${otherReason ? ` | Notes: ${otherReason}` : ''}`;
+    includedRequestKey.current ||= crypto.randomUUID();
+    setIncludedBookingLoading(true);
+    setCheckoutError(null);
+    try {
+      const response = await fetch('/api/consultations/included', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          astrologerId: selectedAstrologer?.id || ASTROLOGERS[0].id,
+          consultationDate: selectedDate,
+          consultationReason: finalReason,
+          notes: formattedNotes,
+          idempotencyKey: includedRequestKey.current,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not submit the included consultation request.');
+
+      includedRequestKey.current = null;
+      setSuccessMsg(data.message || 'Consultation request submitted. It is pending team approval and scheduling.');
+      setSelectedDate(null);
+      setBirthName('');
+      setBirthDate('');
+      setBirthTime('');
+      setBirthPlace('');
+      setConsultationReason('');
+      setOtherReason('');
+      setCurrentStep(1);
+      await refreshEntitlements();
+      setActiveTab('my-bookings');
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Could not submit the included consultation request.');
+    } finally {
+      setIncludedBookingLoading(false);
+    }
   };
 
   // Handle Cancel Booking
@@ -329,9 +383,9 @@ Thank you.`;
             <CheckCircle2 className="h-16 w-16 animate-bounce" />
           </div>
           <div className="flex flex-col gap-2">
-            <h2 className="text-2xl font-serif font-bold text-zinc-900 dark:text-emerald-450">Consultation Booked Successfully!</h2>
+            <h2 className="text-2xl font-serif font-bold text-zinc-900 dark:text-emerald-450">Consultation Request Received</h2>
             <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed font-light">
-              Your one-on-one session has been scheduled and approved. Meeting details have been dispatched to your email.
+              Your payment was verified. The selected date is a preference and the session is not confirmed until the team approves and schedules it.
             </p>
           </div>
 
@@ -369,7 +423,7 @@ Thank you.`;
                 <span className="font-bold text-zinc-800 dark:text-zinc-200">{bookingSuccess.astrologer.name}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-mono">Selected Date</span>
+                <span className="text-[10px] text-zinc-400 uppercase font-mono">Requested Date</span>
                 <span className="font-bold text-zinc-800 dark:text-zinc-200">
                   {new Date(bookingSuccess.date).toLocaleDateString('en-IN', {
                     weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
@@ -848,30 +902,49 @@ Thank you.`;
                 </div>
 
                 {/* Stepper Footer buttons */}
-                <div className="flex justify-between items-center mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-850">
+                <div className="flex flex-col justify-between gap-3 mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-850 sm:flex-row sm:items-center">
                   <button
                     onClick={() => setCurrentStep(3)}
                     className="px-5 py-2.5 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-350 text-xs font-bold uppercase hover:bg-zinc-50 dark:hover:bg-zinc-950/20 cursor-pointer focus:outline-none flex items-center gap-1"
                   >
                     <ArrowLeft className="h-4 w-4" /> Back to Reason
                   </button>
-                  <button
-                    onClick={handleProceedToPayment}
-                    disabled={checkoutLoading}
-                    className="px-8 py-3 luxury-gradient rounded-full text-white text-xs font-bold uppercase tracking-wider shadow transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 hover:scale-[1.01] focus:outline-none"
-                  >
-                    {checkoutLoading ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Initializing Gateway...
-                      </>
-                    ) : (
-                      <>
-                        Proceed to Payment (₹{finalFee.toLocaleString('en-IN')})
-                      </>
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    {!entitlementsLoading && entitlements.consultations_remaining > 0 && (
+                      <button
+                        onClick={() => void handleIncludedConsultation()}
+                        disabled={includedBookingLoading || checkoutLoading}
+                        className="rounded-full bg-emerald-700 px-8 py-3 text-xs font-bold uppercase tracking-wider text-white shadow transition-all hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {includedBookingLoading
+                          ? 'Submitting Request...'
+                          : `Use Included Consultation (${entitlements.consultations_remaining} remaining)`}
+                      </button>
                     )}
-                  </button>
+                    <button
+                      onClick={handleProceedToPayment}
+                      disabled={checkoutLoading || includedBookingLoading}
+                      className="px-8 py-3 luxury-gradient rounded-full text-white text-xs font-bold uppercase tracking-wider shadow transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 hover:scale-[1.01] focus:outline-none"
+                    >
+                      {checkoutLoading ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Initializing Gateway...
+                        </>
+                      ) : (
+                        <>
+                          Proceed to Payment (₹{finalFee.toLocaleString('en-IN')})
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                {!entitlementsLoading && entitlements.consultations_remaining > 0 && (
+                  <p className="mt-2 text-center text-[10px] text-emerald-700 dark:text-emerald-400">
+                    Included credits submit a request only. The consultation is confirmed after the team approves and schedules it.
+                  </p>
+                )}
                 
                 <div className="flex justify-center items-center gap-1 text-[9px] text-zinc-450 dark:text-zinc-550 italic mt-2">
                   🔒 Secure Encrypted Connection. By continuing, you agree to our booking policies.

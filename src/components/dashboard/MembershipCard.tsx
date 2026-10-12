@@ -58,7 +58,7 @@ const PLAN_STYLE: Record<
   string,
   { icon: React.ReactNode; badge: string; ring: string; label: string }
 > = {
-  FREE: {
+  STARTUP: {
     icon: <Shield className="h-5 w-5 text-zinc-400" />,
     badge: 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
     ring: 'border-zinc-200 dark:border-zinc-800',
@@ -87,9 +87,9 @@ const PLAN_STYLE: Record<
 export default function MembershipCard() {
   const { entitlements, loading } = useEntitlements();
 
-  const planKey = entitlements.plan_key || 'FREE';
-  const style = PLAN_STYLE[planKey] || PLAN_STYLE.FREE;
-  const isPaid = planKey !== 'FREE';
+  const planKey = entitlements.plan_key || 'STARTUP';
+  const style = PLAN_STYLE[planKey] || PLAN_STYLE.STARTUP;
+  const isPaid = planKey !== 'STARTUP';
 
   if (loading) {
     return (
@@ -131,7 +131,7 @@ export default function MembershipCard() {
           {isPaid && (
             <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
               <Clock className="h-3.5 w-3.5" />
-              <span>{entitlements.days_remaining}d left</span>
+              <span>{entitlements.is_lifetime ? 'Lifetime' : `${entitlements.days_remaining ?? 0}d left`}</span>
             </div>
           )}
         </div>
@@ -147,13 +147,13 @@ export default function MembershipCard() {
         />
         <CreditBar
           label="Horoscope Reports"
-          used={entitlements.horoscope_used}
+          used={entitlements.horoscope_used + (entitlements.horoscope_reserved || 0)}
           limit={entitlements.horoscope_limit}
           color="bg-emerald-500"
         />
         <CreditBar
           label="Free Consultations"
-          used={entitlements.consultations_used}
+          used={entitlements.consultations_used + (entitlements.consultations_reserved || 0)}
           limit={entitlements.consultations_limit}
           color="bg-sky-500"
         />

@@ -22,7 +22,7 @@ const planMetadata = [
     ],
     missing: [
       'Filter According To Your Preferences',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Contact Phone Numbers',
       'Detailed Horoscope Reports',
@@ -37,7 +37,7 @@ const planMetadata = [
     features: [
       'Filter According To Your Preferences',
       'Browse Profiles',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Up To 15 Contact Numbers',
       'Unlimited Horoscope Match Percentage',
@@ -56,7 +56,7 @@ const planMetadata = [
     features: [
       'Filter According To Your Preferences',
       'Browse Profiles',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Up To 30 Contact Numbers',
       'Unlimited Horoscope Match Percentage',
@@ -76,7 +76,7 @@ const planMetadata = [
     features: [
       'Filter According To Your Preferences',
       'Browse Profiles',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Up To 60 Contact Numbers',
       'Unlimited Horoscope Match Percentage',
@@ -190,7 +190,7 @@ export default function Pricing() {
                       ₹{planDef.price.toLocaleString('en-IN')}
                     </span>
                     <span className="text-xs text-zinc-450 dark:text-zinc-555 pl-1">
-                      / {meta.key === 'FREE' ? 'lifetime' : meta.key === 'SILVER' ? '30 days' : meta.key === 'GOLD' ? '3 months' : '6 months'}
+                      / {planDef.durationLabel.toLowerCase()}
                     </span>
                   </div>
                   {planDef.price > 0 && (
@@ -236,7 +236,13 @@ export default function Pricing() {
                       Processing...
                     </span>
                   ) : (
-                    meta.key === 'FREE' ? 'Register Free' : `Get ${meta.name}`
+                    meta.key === 'FREE'
+                      ? 'Sign Up Free'
+                      : meta.key === 'SILVER'
+                        ? 'Get Silver'
+                        : meta.key === 'GOLD'
+                          ? 'Go Gold Plan'
+                          : 'Go Diamond Plan'
                   )}
                 </button>
               </div>

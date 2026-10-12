@@ -7,6 +7,18 @@ import { createRequestClient, supabaseAdmin } from '@/lib/supabase/server';
 import { paymentService } from '@/services/payment.service';
 import { FEATURED_PROFILE_PRICES, CONSULTATION_PRICE } from '@/constants/payments';
 import { razorpayConfig, paymentsConfigured } from '@/lib/payments/config';
+import { ASTROLOGERS } from '@/constants/astrologers';
+
+const consultationDetailsSchema = z.object({
+  consultationDate: z.iso.date(),
+  consultationReason: z.string().trim().min(3).max(500),
+  notes: z.string().trim().max(2000).default(''),
+  astrologerId: z.uuid(),
+}).strict();
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Internal Server Error';
+}
 
 export async function POST(req: Request) {
   try {
@@ -32,7 +44,11 @@ export async function POST(req: Request) {
     const dbUserId = userRow.id;
 
     const body = await req.json();
-    const { paymentType, planId, couponCode, bookingDetails, featuredDays, targetProfileId } = body;
+    const { paymentType, planId, couponCode, featuredDays, targetProfileId, checkoutKey } = body;
+    let bookingDetails = body.bookingDetails;
+    if (!z.uuid().safeParse(checkoutKey).success) {
+      return NextResponse.json({ error: 'A valid checkout request key is required.' }, { status: 400 });
+    }
     const billingResult = z.object({
       name: z.string().trim().max(150).default(''), address: z.string().trim().max(500).default(''),
       city: z.string().trim().max(100).default(''), state: z.string().trim().max(100).default(''),
@@ -51,8 +67,8 @@ export async function POST(req: Request) {
     let planDurationDays: number | null = null;
 
     if (paymentType === 'subscription') {
-      if (!planId) {
-        return NextResponse.json({ error: 'planId is required for subscriptions' }, { status: 400 });
+      if (!z.uuid().safeParse(planId).success) {
+        return NextResponse.json({ error: 'A valid plan is required for subscriptions.' }, { status: 400 });
       }
       const { data: plan, error: planErr } = await requestClient
         .from('subscription_plans')
@@ -64,6 +80,9 @@ export async function POST(req: Request) {
       if (planErr || !plan) {
         return NextResponse.json({ error: 'Subscription plan not found' }, { status: 404 });
       }
+      if (Number(plan.price) <= 0 || plan.plan_key === 'startup') {
+        return NextResponse.json({ error: 'The Startup plan is activated automatically and does not require checkout.' }, { status: 400 });
+      }
       originalPrice = Number(plan.price);
       planDurationDays = plan.duration_days;
       description = `Gokul Vivaham - ${plan.name}`;
@@ -73,16 +92,24 @@ export async function POST(req: Request) {
       originalPrice = days === 30 ? FEATURED_PROFILE_PRICES.DAYS_30 : FEATURED_PROFILE_PRICES.DAYS_15;
       description = `Gokul Vivaham - Featured Profile for ${days} Days`;
     } else if (paymentType === 'consultation') {
-      if (!bookingDetails || !/^\d{4}-\d{2}-\d{2}$/.test(bookingDetails.consultationDate || '') ||
-          !Number.isFinite(Date.parse(bookingDetails.consultationDate))) {
-        return NextResponse.json({ error: 'Choose a valid consultation date.' }, { status: 400 });
+      const parsedBooking = consultationDetailsSchema.safeParse(bookingDetails);
+      if (!parsedBooking.success) return NextResponse.json({ error: 'Choose valid consultation details.' }, { status: 400 });
+      const todayInIndia = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      if (parsedBooking.data.consultationDate <= todayInIndia) return NextResponse.json({ error: 'Consultation date must be in the future.' }, { status: 400 });
+      if (!ASTROLOGERS.some((astrologer) => astrologer.id === parsedBooking.data.astrologerId)) {
+        return NextResponse.json({ error: 'The selected astrologer is unavailable.' }, { status: 400 });
       }
+      bookingDetails = parsedBooking.data;
       originalPrice = CONSULTATION_PRICE; // Flat rate for consultation bookings
       description = `Gokul Vivaham - Astrologer Consultation`;
     } else if (paymentType === 'contact_unlock') {
-      if (!targetProfileId) {
-        return NextResponse.json({ error: 'targetProfileId is required for contact unlocks' }, { status: 400 });
+      if (!z.uuid().safeParse(targetProfileId).success) {
+        return NextResponse.json({ error: 'A valid target profile is required for contact unlocks.' }, { status: 400 });
       }
+      const { data: contactTarget } = await supabaseAdmin.from('profiles').select('id,user_id,users!inner(id)').eq('id', targetProfileId)
+        .eq('is_suspended', false).eq('is_banned', false).is('deleted_at', null)
+        .eq('users.status', 'active').is('users.deleted_at', null).maybeSingle();
+      if (!contactTarget || contactTarget.user_id === dbUserId) return NextResponse.json({ error: 'Target profile is unavailable.' }, { status: 404 });
       originalPrice = 199;
       description = `Gokul Vivaham - Single Contact Unlock`;
     } else {
@@ -123,6 +150,30 @@ export async function POST(req: Request) {
 
     const gatewayChargePrice = finalPrice; // Business is unregistered: no GST collected.
 
+    // A checkout key is generated once per user action. Replaying the same
+    // request returns the original pending order instead of creating another.
+    const { data: existingPayment } = await supabaseAdmin
+      .from('payments')
+      .select('razorpay_order_id,amount,currency,status')
+      .eq('user_id', dbUserId)
+      .eq('checkout_key', checkoutKey)
+      .maybeSingle();
+    if (existingPayment) {
+      if (existingPayment.status !== 'pending') {
+        return NextResponse.json({ error: `This checkout is already ${existingPayment.status}. Start a new checkout if needed.` }, { status: 409 });
+      }
+      return NextResponse.json({
+        orderId: existingPayment.razorpay_order_id,
+        order_id: existingPayment.razorpay_order_id,
+        amount: Math.round(Number(existingPayment.amount) * 100),
+        currency: existingPayment.currency || 'INR',
+        keyId: razorpayConfig.keyId,
+        description,
+        user: { name: user.user_metadata?.full_name || 'Valued Member', email: user.email, phone: user.phone || '' },
+        idempotent: true,
+      });
+    }
+
     // Call reusable payment service to create order
     if (!Number.isFinite(gatewayChargePrice) || !Number.isSafeInteger(Math.round(gatewayChargePrice * 100)) || Math.round(gatewayChargePrice * 100) < 100) {
       return NextResponse.json({ error: 'Minimum payment amount is 100 paise (₹1).' }, { status: 400 });
@@ -157,7 +208,8 @@ export async function POST(req: Request) {
         featured_duration_days: paymentType === 'featured_profile' ? (Number(featuredDays) || 30) : null,
         razorpay_order_id: orderData.id,
         coupon_id: appliedCouponId,
-        target_profile_id: paymentType === 'contact_unlock' ? targetProfileId : null
+        target_profile_id: paymentType === 'contact_unlock' ? targetProfileId : null,
+        checkout_key: checkoutKey,
       })
       .select()
       .single();
@@ -195,12 +247,12 @@ export async function POST(req: Request) {
       user: {
         name: user.user_metadata?.full_name || 'Valued Member',
         email: user.email,
-        phone: (user as any).phone || ''
+        phone: user.phone || ''
       }
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Create Order Handler error:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }

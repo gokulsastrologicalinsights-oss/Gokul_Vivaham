@@ -12,22 +12,6 @@ const grantTypes = z.enum([
   'other',
 ]);
 
-const planSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  description: z.string().trim().max(2000).default(''),
-  price: z.number().finite().min(0),
-  duration_days: z.number().int().positive().max(3650),
-  features: z.record(z.string(), z.unknown()).default({}),
-  is_active: z.boolean().default(true),
-  contact_view_limit: z.number().int().min(0).max(100000).default(0),
-  messaging_enabled: z.boolean().default(false),
-  profile_visibility_benefit: z.string().trim().max(500).default(''),
-  photo_viewing_enabled: z.boolean().default(false),
-  premium_badge_eligible: z.boolean().default(false),
-  search_enabled: z.boolean().default(false),
-  reason: z.string().trim().max(1000).optional(),
-}).strict();
-
 const membershipPayload = z.object({
   memberId: z.uuid(),
   subscriptionId: z.uuid().optional().nullable(),
@@ -76,7 +60,7 @@ async function requireAdmin(request: Request, mutation = false) {
 function statusFor(row: any, now = Date.now()) {
   if (row.payment_status === 'Cancelled') return 'cancelled';
   if (row.payment_status === 'Pending' && (!row.start_date || new Date(row.start_date).getTime() > now)) return 'pending';
-  if (row.payment_status === 'Completed' && row.end_date && new Date(row.end_date).getTime() > now && (!row.start_date || new Date(row.start_date).getTime() <= now)) return 'active';
+  if (row.payment_status === 'Completed' && (!row.end_date || new Date(row.end_date).getTime() > now) && (!row.start_date || new Date(row.start_date).getTime() <= now)) return 'active';
   if (row.end_date && new Date(row.end_date).getTime() <= now) return 'expired';
   return String(row.payment_status || 'pending').toLowerCase();
 }
@@ -145,11 +129,13 @@ export async function GET(request: Request) {
       if (error) throw error;
       const profileMap = new Map((profiles.data || []).map((p: any) => [p.user_id, p]));
       const currentMap = new Map<string, any>();
-      for (const row of subscriptions.data || []) if (!currentMap.has(row.user_id) && statusFor(row) === 'active') currentMap.set(row.user_id, row);
+      for (const row of subscriptions.data || []) {
+        if (row.grant_type !== 'system_free' && !currentMap.has(row.user_id) && statusFor(row) === 'active') currentMap.set(row.user_id, row);
+      }
       const members = (users.data || []).map((user: any) => {
         const profile = profileMap.get(user.id) || {};
         const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-        return { id: user.id, email: user.email || '', mobile_number: user.mobile_number || '', profile_id: profile.profile_id || '', name: name || 'Unnamed member', current_subscription: currentMap.get(user.id) || null };
+        return { id: user.id, email: user.email || '', mobile_number: user.mobile_number || '', profile_id: profile.profile_id || '', name: name || 'Unnamed member', current_subscription: currentMap.get(user.id) || null, current_plan_name: currentMap.get(user.id)?.plan?.name || 'Startup Plan' };
       }).filter((member: any) => !search || [member.id, member.email, member.mobile_number, member.profile_id, member.name].some((value) => String(value).toLowerCase().includes(search)));
       return NextResponse.json({ members: members.slice(0, 100) }, { headers: { 'Cache-Control': 'no-store' } });
     }
@@ -185,14 +171,7 @@ export async function POST(request: Request) {
   const action = body?.action;
   try {
     if (action === 'plan_create' || action === 'plan_update') {
-      const parsed = planSchema.safeParse(body?.plan);
-      if (!parsed.success) return NextResponse.json({ error: 'Check the plan fields.' }, { status: 400 });
-      const planId = action === 'plan_update' ? z.uuid().safeParse(body?.planId) : { success: true, data: null };
-      if (!planId.success) return NextResponse.json({ error: 'Plan ID is invalid.' }, { status: 400 });
-      const { data, error } = await supabaseAdmin.rpc('admin_upsert_membership_plan', { actor_auth: auth.access!.user.id, target_plan: planId.data, plan_payload: parsed.data });
-      if (membershipMigrationError(error)) return migrationRequiredResponse();
-      if (error) return NextResponse.json({ error: error.message || 'Plan could not be saved.' }, { status: 409 });
-      return NextResponse.json({ success: true, plan: data });
+      return NextResponse.json({ error: 'The four canonical membership plans are migration-managed and cannot be changed through the browser.' }, { status: 409 });
     }
 
     const parsed = actionSchema.safeParse(body);
@@ -229,13 +208,5 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const auth = await requireAdmin(request, true);
   if (auth.response) return auth.response;
-  const body = await request.json().catch(() => null);
-  const planId = z.uuid().safeParse(body?.planId);
-  if (!planId.success) return NextResponse.json({ error: 'Plan ID is invalid.' }, { status: 400 });
-  const reason = z.string().trim().max(1000).optional().safeParse(body?.reason);
-  if (!reason.success) return NextResponse.json({ error: 'Delete reason is invalid.' }, { status: 400 });
-  const { data, error } = await supabaseAdmin.rpc('admin_delete_membership_plan', { actor_auth: auth.access!.user.id, target_plan: planId.data, reason_text: reason.data || null });
-  if (membershipMigrationError(error)) return migrationRequiredResponse();
-  if (error) return NextResponse.json({ error: error.message || 'Plan cannot be deleted while it is in use.' }, { status: 409 });
-  return NextResponse.json({ success: true, result: data });
+  return NextResponse.json({ error: 'Canonical membership plans cannot be deleted.' }, { status: 409 });
 }

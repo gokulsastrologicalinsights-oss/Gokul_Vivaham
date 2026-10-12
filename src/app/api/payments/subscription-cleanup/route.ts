@@ -77,14 +77,18 @@ export async function POST(req: Request) {
             .update({ role: 'user' })
             .eq('id', sub.user_id);
 
-          // Update auth metadata
-          const authUserId = sub.users?.auth_user_id;
-          if (authUserId) {
-            await supabaseAdmin.auth.admin.updateUserById(authUserId, {
-              user_metadata: { role: 'user' }
-            });
-          }
         }
+
+        await supabaseAdmin.from('membership_audit_logs').insert({
+          action: 'membership_expired',
+          actor_auth_user_id: access.user.id,
+          target_user_id: sub.user_id,
+          subscription_id: sub.id,
+          plan_id: sub.plan_id,
+          previous_values: sub,
+          new_values: { ...sub, payment_status: 'Expired' },
+          reason: 'Scheduled expiry cleanup',
+        });
 
         // C. Log User Notification
         await supabaseAdmin

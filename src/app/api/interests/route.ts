@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { getMemberEntitlements } from '@/lib/membership/server';
 
 const uuidSchema = z.string().uuid();
 const requestBodySchema = z.object({
@@ -85,6 +86,20 @@ export async function POST(request: Request) {
   const { receiverUserId } = parsed.data;
   if (receiverUserId === member.id) {
     return NextResponse.json({ error: 'You cannot send an interest request to yourself.' }, { status: 400 });
+  }
+
+  if (!member.access.isAdmin) {
+    try {
+      const entitlement = await getMemberEntitlements(member.id);
+      if (entitlement.interest_send_enabled !== true) {
+        return NextResponse.json(
+          { error: 'Sending interests requires an active Silver, Gold, or Diamond membership.', upgrade_required: true },
+          { status: 403 },
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: 'Unable to verify membership access.' }, { status: 503 });
+    }
   }
 
   const [{ data: receiver }, { data: block }] = await Promise.all([

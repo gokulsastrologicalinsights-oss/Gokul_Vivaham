@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:membership": "node --test scripts/membership/membership.test.cjs",
     "storage:migrate": "node scripts/migrate-storage-to-r2.cjs"
   },
   "dependencies": {

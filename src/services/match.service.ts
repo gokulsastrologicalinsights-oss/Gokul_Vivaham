@@ -329,10 +329,21 @@ export const matchService = {
       }
 
       const senderIds = requests.map(r => r.sender_user_id);
-      const { data: profiles, error: profError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('user_id', senderIds);
+      const summaryResponse = await fetch('/api/profiles/summaries', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: senderIds }),
+      });
+      const summaryResult = await summaryResponse.json();
+      if (!summaryResponse.ok) return { data: [], error: new Error(summaryResult.error || 'Could not load member summaries.') };
+      const profiles = (summaryResult.profiles || []) as Array<{
+        user_id: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        age?: number | null;
+        education?: string | null;
+        city?: string | null;
+        nakshatra?: string | null;
+      }>;
 
       const formatted = requests.map(req => {
         const profile = profiles?.find(p => p.user_id === req.sender_user_id);
@@ -348,7 +359,7 @@ export const matchService = {
         };
       });
 
-      return { data: formatted, error: profError };
+      return { data: formatted, error: null };
     } catch (err: any) {
       return { data: [], error: err };
     }

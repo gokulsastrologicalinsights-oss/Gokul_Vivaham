@@ -50,29 +50,21 @@ export const chatService = {
         return { data: [], error };
       }
 
+      const otherUserIds = chatList.map((chat) => chat.user_one === currentUserId ? chat.user_two : chat.user_one);
+      const summaryResponse = await fetch('/api/profiles/summaries', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: otherUserIds }),
+      });
+      const summaryResult = await summaryResponse.json();
+      if (!summaryResponse.ok) return { data: [], error: new Error(summaryResult.error || 'Could not load conversation members.') };
+      const profileSummaries = summaryResult.profiles || [];
+
       // 4. For each chat, retrieve opponent's profile and last message
       const conversations = await Promise.all(
         chatList.map(async (chat) => {
           const otherUserId = chat.user_one === currentUserId ? chat.user_two : chat.user_one;
           
-          // Get profile with verification states
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, profile_id, age, is_verified, is_premium, id_verification_status, horoscope_verification_status, users(email_verified, mobile_verified)')
-            .eq('user_id', otherUserId)
-            .maybeSingle();
-
-          // Profile photos are still permission-filtered by the existing gallery RLS.
-          // Use the profile image first, then fall back to the approved profile picture.
-          const { data: galleryPhoto } = await supabase
-            .from('gallery_images')
-            .select('image_url, thumbnail_url')
-            .eq('user_id', otherUserId)
-            .eq('is_profile_picture', true)
-            .eq('moderation_status', 'approved')
-            .is('deleted_at', null)
-            .limit(1)
-            .maybeSingle();
+          const profile = profileSummaries.find((item: any) => item.user_id === otherUserId);
 
           // Get last message
           const { data: messages } = await supabase
@@ -96,7 +88,7 @@ export const chatService = {
             updated_at: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
             other_user_id: otherUserId,
             profile_id: profile?.profile_id || null,
-            profile_photo_url: galleryPhoto?.thumbnail_url || galleryPhoto?.image_url || null,
+            profile_photo_url: profile?.image_url || null,
             // verification states
             is_verified: profile?.is_verified || false,
             is_premium: profile?.is_premium || false,

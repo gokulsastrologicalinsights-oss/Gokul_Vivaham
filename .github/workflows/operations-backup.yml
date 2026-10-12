@@ -29,8 +29,13 @@ jobs:
       - name: Export and encrypt database and private files
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          CLOUDFLARE_R2_URL: ${{ secrets.CLOUDFLARE_R2_URL }}
+          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          R2_PROFILE_PHOTOS_BUCKET: ${{ secrets.R2_PROFILE_PHOTOS_BUCKET }}
+          R2_HOROSCOPES_BUCKET: ${{ secrets.R2_HOROSCOPES_BUCKET }}
+          R2_ID_PROOFS_BUCKET: ${{ secrets.R2_ID_PROOFS_BUCKET }}
           BACKUP_OUTPUT: ${{ runner.temp }}/gokul-encrypted-backup
         run: node scripts/operations/backup.cjs
       - name: Check archive integrity before uploading

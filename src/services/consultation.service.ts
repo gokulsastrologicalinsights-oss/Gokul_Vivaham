@@ -1,15 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { SUBSCRIPTION_PLANS } from '@/constants/payments';
-
-/** Resolve plan key from a plan name string */
-function resolvePlanKey(planName: string): string {
-  const n = planName.toLowerCase();
-  if (n.includes('diamond')) return 'DIAMOND';
-  if (n.includes('gold')) return 'GOLD';
-  if (n.includes('silver')) return 'SILVER';
-  return 'FREE';
-}
-
 
 export const consultationService = {
   /**
@@ -184,73 +173,6 @@ export const consultationService = {
     } catch (err: any) {
       console.error('Error rescheduling booking:', err);
       return { success: false, error: err };
-    }
-  },
-  /**
-   * Checks whether the current user has remaining free consultation credits.
-   * Returns { allowed, used, limit, remaining }.
-   */
-  async checkFreeConsultationCredit(dbUserId: string): Promise<{
-    allowed: boolean;
-    used: number;
-    limit: number;
-    remaining: number;
-    planName: string;
-  }> {
-    try {
-      // Fetch active subscription
-      const { data: activeSub } = await supabase
-        .from('subscriptions')
-        .select('*, plan:subscription_plans(name)')
-        .eq('user_id', dbUserId)
-        .eq('payment_status', 'Completed')
-        .gt('end_date', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!activeSub) {
-        return { allowed: false, used: 0, limit: 0, remaining: 0, planName: 'Startup Plan' };
-      }
-
-      const planKey = resolvePlanKey(activeSub.plan?.name || '');
-      const limit = SUBSCRIPTION_PLANS[planKey]?.entitlements?.consultations_limit ?? 0;
-      const planName = SUBSCRIPTION_PLANS[planKey]?.name || 'Unknown Plan';
-
-      if (limit === 0) {
-        return { allowed: false, used: 0, limit: 0, remaining: 0, planName };
-      }
-
-      // Count used consultations since subscription start
-      const { count } = await supabase
-        .from('activity_logs')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', dbUserId)
-        .eq('action', 'use_free_consultation')
-        .gte('created_at', activeSub.start_date);
-
-      const used = count || 0;
-      const remaining = Math.max(0, limit - used);
-      return { allowed: remaining > 0, used, limit, remaining, planName };
-    } catch (err: any) {
-      console.error('checkFreeConsultationCredit error:', err);
-      return { allowed: false, used: 0, limit: 0, remaining: 0, planName: 'Unknown' };
-    }
-  },
-
-  /**
-   * Records a free consultation usage event in activity_logs.
-   * Call this after a successful free consultation booking.
-   */
-  async logFreeConsultationUsed(dbUserId: string, bookingId?: string): Promise<void> {
-    try {
-      await supabase.from('activity_logs').insert({
-        user_id: dbUserId,
-        action: 'use_free_consultation',
-        metadata: { booking_id: bookingId || null },
-      });
-    } catch (err) {
-      console.error('logFreeConsultationUsed error:', err);
     }
   },
 };

@@ -1,3 +1,3 @@
 export const subscriptionConfig = {
-  plans: ['Free', 'Gold', 'Diamond']
+  plans: ['Startup', 'Silver', 'Gold', 'Diamond']
 };

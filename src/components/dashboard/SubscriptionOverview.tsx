@@ -5,7 +5,7 @@ import { Crown, Gem, Shield, Zap, ArrowUpRight } from 'lucide-react';
 import { useEntitlements } from '@/hooks/useEntitlements';
 
 const PLAN_ICON: Record<string, React.ReactNode> = {
-  FREE: <Shield className="h-4 w-4 text-zinc-400" />,
+  STARTUP: <Shield className="h-4 w-4 text-zinc-400" />,
   SILVER: <Zap className="h-4 w-4 text-slate-500" />,
   GOLD: <Crown className="h-4 w-4 text-gold-500" />,
   DIAMOND: <Gem className="h-4 w-4 text-sky-500" />,
@@ -20,13 +20,13 @@ export default function SubscriptionOverview() {
     );
   }
 
-  const isPaid = entitlements.plan_key !== 'FREE';
+  const isPaid = entitlements.plan_key !== 'STARTUP';
 
   return (
     <div className="p-4 border rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border-sandal-200 dark:border-zinc-800 flex items-center justify-between gap-3">
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 border border-sandal-200 dark:border-zinc-700 flex items-center justify-center shadow-sm">
-          {PLAN_ICON[entitlements.plan_key] || PLAN_ICON.FREE}
+          {PLAN_ICON[entitlements.plan_key] || PLAN_ICON.STARTUP}
         </div>
         <div>
           <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Active Plan</p>
@@ -38,7 +38,7 @@ export default function SubscriptionOverview() {
 
       {isPaid ? (
         <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono shrink-0">
-          {entitlements.days_remaining}d left
+          {entitlements.is_lifetime ? 'Lifetime' : `${entitlements.days_remaining ?? 0}d left`}
         </span>
       ) : (
         <Link

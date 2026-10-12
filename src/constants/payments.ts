@@ -19,7 +19,8 @@ export interface SubscriptionPlanDef {
   id: string;
   name: string;
   price: number;
-  durationDays: number;
+  durationDays: number | null;
+  durationLabel: string;
   role: string;
   /** Per-subscription-period entitlement limits */
   entitlements: {
@@ -44,7 +45,8 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanDef> = {
     id: '0ffd3070-7aba-4554-8790-93c76b318df6',
     name: 'Startup Plan',
     price: 0,
-    durationDays: 3650,
+    durationDays: null,
+    durationLabel: 'Lifetime',
     role: 'user',
     entitlements: {
       contacts_limit: 0,
@@ -59,7 +61,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanDef> = {
       priority_support: false,
       profile_boosting: false,
       profile_views_daily: 5,
-      horoscope_compatibility: false,
+      horoscope_compatibility: true,
     },
   },
   SILVER: {
@@ -67,6 +69,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanDef> = {
     name: 'Silver Plan',
     price: 1499,
     durationDays: 30,
+    durationLabel: '30 days',
     role: 'silver',
     entitlements: {
       contacts_limit: 15,
@@ -89,6 +92,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanDef> = {
     name: 'Gold Plan',
     price: 2999,
     durationDays: 90,
+    durationLabel: '3 calendar months',
     role: 'gold',
     entitlements: {
       contacts_limit: 30,
@@ -111,6 +115,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlanDef> = {
     name: 'Diamond Plan',
     price: 5999,
     durationDays: 180,
+    durationLabel: '6 calendar months',
     role: 'diamond',
     entitlements: {
       contacts_limit: 60,

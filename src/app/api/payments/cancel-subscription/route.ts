@@ -28,9 +28,14 @@ export async function POST(req: Request) {
     // 3. Find active subscription
     const { data: activeSub, error: subErr } = await requestClient
       .from('subscriptions')
-      .select('*')
+      .select('*,plan:subscription_plans(price,plan_key)')
       .eq('user_id', dbUserId)
       .eq('payment_status', 'Completed')
+      .neq('grant_type', 'system_free')
+      .lte('start_date', new Date().toISOString())
+      .gt('end_date', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (subErr || !activeSub) {
@@ -48,7 +53,10 @@ export async function POST(req: Request) {
         await razorpayClient.subscriptions.cancel(activeSub.razorpay_subscription_id, true);
       } catch (err: any) {
         console.error('Failed to cancel subscription on Razorpay API:', err);
-        // We will proceed to cancel locally even if Razorpay API call fails or plan is already in cancelling state
+        return NextResponse.json(
+          { error: 'The payment provider did not confirm cancellation. No local membership state was changed.' },
+          { status: 502 },
+        );
       }
     }
 
@@ -90,11 +98,18 @@ export async function POST(req: Request) {
         .update({ role: 'user' })
         .eq('id', dbUserId);
 
-      // Update auth metadata
-      await supabaseAdmin.auth.admin.updateUserById(user.id, {
-        user_metadata: { role: 'user' }
-      });
     }
+
+    await supabaseAdmin.from('membership_audit_logs').insert({
+      action: 'membership_cancelled_by_member',
+      actor_auth_user_id: user.id,
+      target_user_id: dbUserId,
+      subscription_id: activeSub.id,
+      plan_id: activeSub.plan_id,
+      previous_values: activeSub,
+      new_values: { ...activeSub, payment_status: 'Expired' },
+      reason: 'Member requested immediate cancellation',
+    });
 
     // 7. Log User Notification
     await supabaseAdmin

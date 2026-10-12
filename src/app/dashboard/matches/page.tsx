@@ -98,7 +98,7 @@ function MatchesContent() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ profileId: activeProfile.id }),
+          body: JSON.stringify({ profileUuid: activeProfile.profile_uuid }),
         });
         const data = await res.json();
         if (res.ok && data.success) {

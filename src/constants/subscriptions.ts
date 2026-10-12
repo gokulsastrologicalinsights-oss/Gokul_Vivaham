@@ -20,7 +20,7 @@ export const SUBSCRIPTION_PLANS = {
     features: [
       'Filter According To Your Preferences',
       'Browse Profiles',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Up To 15 Contact Numbers',
       'Unlimited Horoscope Match Percentage',
@@ -35,7 +35,7 @@ export const SUBSCRIPTION_PLANS = {
     features: [
       'Filter According To Your Preferences',
       'Browse Profiles',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Up To 30 Contact Numbers',
       'Unlimited Horoscope Match Percentage',
@@ -51,7 +51,7 @@ export const SUBSCRIPTION_PLANS = {
     features: [
       'Filter According To Your Preferences',
       'Browse Profiles',
-      'Verified Badge',
+      'Verified Badge (subject to profile verification)',
       'Send and Receive Interests & Messages',
       'View Up To 60 Contact Numbers',
       'Unlimited Horoscope Match Percentage',

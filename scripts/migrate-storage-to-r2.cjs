@@ -1,12 +1,9 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createClient } = require('@supabase/supabase-js');
-const {
-  GetObjectCommand,
-  HeadObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} = require('@aws-sdk/client-s3');
+const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 
 function loadLocalEnv() {
   const envPath = path.resolve('.env.local');
@@ -24,14 +21,16 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
-const bucketMap = {
-  photos: process.env.R2_PROFILE_PHOTOS_BUCKET,
-  horoscopes: process.env.R2_HOROSCOPES_BUCKET,
-  'id-proofs': process.env.R2_ID_PROOFS_BUCKET,
-};
-const sourceBuckets = Object.keys(bucketMap);
+const migrations = [
+  { sourceBucket: 'photos', destinationBucket: process.env.R2_PROFILE_PHOTOS_BUCKET },
+  { sourceBucket: 'galleries', destinationBucket: process.env.R2_PROFILE_PHOTOS_BUCKET },
+  { sourceBucket: 'horoscopes', destinationBucket: process.env.R2_HOROSCOPES_BUCKET },
+  { sourceBucket: 'id-proofs', destinationBucket: process.env.R2_ID_PROOFS_BUCKET },
+];
 const execute = process.argv.includes('--execute');
 const overwrite = process.argv.includes('--overwrite');
+const reportArgument = process.argv.find(argument => argument.startsWith('--report='));
+const reportPath = path.resolve(reportArgument ? reportArgument.slice('--report='.length) : 'scratch/r2-storage-migration-report.json');
 
 for (const key of [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -42,8 +41,8 @@ for (const key of [
 ]) {
   if (!process.env[key]) throw new Error(`${key} is missing from .env.local`);
 }
-for (const bucket of sourceBuckets) {
-  if (!bucketMap[bucket]) throw new Error(`R2 bucket mapping is missing for ${bucket}`);
+for (const migration of migrations) {
+  if (!migration.destinationBucket) throw new Error(`R2 bucket mapping is missing for ${migration.sourceBucket}`);
 }
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -67,6 +66,10 @@ function contentType(file) {
   return 'image/jpeg';
 }
 
+function sha256(bytes) {
+  return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
 async function listFiles(bucket, prefix = '') {
   const files = [];
   let offset = 0;
@@ -76,7 +79,10 @@ async function listFiles(bucket, prefix = '') {
       offset,
       sortBy: { column: 'name', order: 'asc' },
     });
-    if (error) throw new Error(`Could not list Supabase ${bucket}/${prefix}: ${error.message}`);
+    if (error) {
+      if (!prefix && /not found|does not exist/i.test(error.message)) return files;
+      throw new Error(`Could not list Supabase ${bucket}/${prefix}: ${error.message}`);
+    }
     if (!data?.length) break;
     for (const item of data) {
       const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
@@ -90,22 +96,52 @@ async function listFiles(bucket, prefix = '') {
   return files;
 }
 
-async function existsInR2(bucket, key) {
+async function downloadSupabaseObject(bucket, key) {
+  const { data, error } = await supabase.storage.from(bucket).download(key);
+  if (error || !data) throw new Error(`Could not download ${bucket}/${key}: ${error?.message || 'empty file'}`);
+  return Buffer.from(await data.arrayBuffer());
+}
+
+async function downloadR2Object(bucket, key) {
   try {
-    await r2.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-    return true;
+    const result = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    if (!result.Body) throw new Error('R2 returned an empty response body');
+    return Buffer.from(await result.Body.transformToByteArray());
   } catch (error) {
     const status = error?.$metadata?.httpStatusCode;
-    if (status === 404 || error?.name === 'NotFound' || error?.name === 'NoSuchKey') return false;
+    if (status === 404 || error?.name === 'NotFound' || error?.name === 'NoSuchKey') return null;
     throw error;
   }
 }
 
-async function copyFile(sourceBucket, destinationBucket, file) {
-  if (!overwrite && await existsInR2(destinationBucket, file.name)) return 'skipped';
-  const { data, error } = await supabase.storage.from(sourceBucket).download(file.name);
-  if (error || !data) throw new Error(`Could not download ${sourceBucket}/${file.name}: ${error?.message || 'empty file'}`);
-  const body = Buffer.from(await data.arrayBuffer());
+function saveReport(report) {
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o600 });
+}
+
+async function verifyObject(destinationBucket, key, sourceBody) {
+  const destinationBody = await downloadR2Object(destinationBucket, key);
+  if (!destinationBody) return { exists: false, verified: false };
+  const sourceHash = sha256(sourceBody);
+  const destinationHash = sha256(destinationBody);
+  return {
+    exists: true,
+    verified: sourceBody.byteLength === destinationBody.byteLength && sourceHash === destinationHash,
+    sourceBytes: sourceBody.byteLength,
+    destinationBytes: destinationBody.byteLength,
+    sha256: sourceHash,
+  };
+}
+
+async function migrateFile(sourceBucket, destinationBucket, file) {
+  const body = await downloadSupabaseObject(sourceBucket, file.name);
+  const before = await verifyObject(destinationBucket, file.name, body);
+  if (before.verified) return { outcome: 'verified-existing', bytes: body.byteLength, sha256: before.sha256 };
+  if (before.exists && !overwrite) {
+    throw new Error(`R2 object exists but does not match the Supabase source; rerun with --overwrite only after reviewing ${file.name}`);
+  }
+  if (!execute) return { outcome: before.exists ? 'would-overwrite' : 'would-copy', bytes: body.byteLength, sha256: sha256(body) };
+
   await r2.send(new PutObjectCommand({
     Bucket: destinationBucket,
     Key: file.name,
@@ -113,24 +149,78 @@ async function copyFile(sourceBucket, destinationBucket, file) {
     ContentType: contentType(file),
     CacheControl: 'private, no-store',
   }));
-  return 'copied';
+  const after = await verifyObject(destinationBucket, file.name, body);
+  if (!after.verified) throw new Error(`R2 verification failed after uploading ${sourceBucket}/${file.name}`);
+  return { outcome: before.exists ? 'overwritten-verified' : 'copied-verified', bytes: body.byteLength, sha256: after.sha256 };
 }
 
 async function main() {
-  const summary = {};
-  for (const sourceBucket of sourceBuckets) {
-    const destinationBucket = bucketMap[sourceBucket];
-    const files = await listFiles(sourceBucket);
-    summary[sourceBucket] = { total: files.length, copied: 0, skipped: 0 };
-    console.log(`${sourceBucket}: found ${files.length} object(s)${execute ? '' : ' (dry run)'}`);
-    if (!execute) continue;
-    for (const file of files) {
-      const result = await copyFile(sourceBucket, destinationBucket, file);
-      summary[sourceBucket][result] += 1;
-      console.log(`  ${result}: ${file.name}`);
+  const report = {
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    mode: execute ? (overwrite ? 'execute-overwrite' : 'execute') : 'dry-run',
+    sourceRetained: true,
+    buckets: {},
+    failures: [],
+  };
+  saveReport(report);
+
+  for (const migration of migrations) {
+    const { sourceBucket, destinationBucket } = migration;
+    let files;
+    try {
+      files = await listFiles(sourceBucket);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      report.failures.push({ sourceBucket, key: null, message });
+      report.buckets[sourceBucket] = { destinationBucket, total: 0, failed: 1 };
+      saveReport(report);
+      console.error(`${sourceBucket}: ${message}`);
+      continue;
+    }
+
+    const summary = {
+      destinationBucket,
+      total: files.length,
+      verifiedExisting: 0,
+      copiedVerified: 0,
+      overwrittenVerified: 0,
+      wouldCopy: 0,
+      wouldOverwrite: 0,
+      failed: 0,
+      bytesVerified: 0,
+    };
+    report.buckets[sourceBucket] = summary;
+    console.log(`${sourceBucket} -> ${destinationBucket}: found ${files.length} object(s)${execute ? '' : ' (dry run)'}`);
+
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      try {
+        const result = await migrateFile(sourceBucket, destinationBucket, file);
+        const field = {
+          'verified-existing': 'verifiedExisting',
+          'copied-verified': 'copiedVerified',
+          'overwritten-verified': 'overwrittenVerified',
+          'would-copy': 'wouldCopy',
+          'would-overwrite': 'wouldOverwrite',
+        }[result.outcome];
+        summary[field] += 1;
+        if (result.outcome.includes('verified')) summary.bytesVerified += result.bytes;
+        console.log(`  [${index + 1}/${files.length}] ${result.outcome}: ${file.name}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        summary.failed += 1;
+        report.failures.push({ sourceBucket, destinationBucket, key: file.name, message });
+        console.error(`  [${index + 1}/${files.length}] failed: ${file.name} (${message})`);
+      }
+      saveReport(report);
     }
   }
-  console.log(JSON.stringify({ mode: execute ? (overwrite ? 'execute-overwrite' : 'execute') : 'dry-run', summary }, null, 2));
+
+  report.completedAt = new Date().toISOString();
+  saveReport(report);
+  console.log(JSON.stringify({ mode: report.mode, buckets: report.buckets, failureCount: report.failures.length, reportPath }, null, 2));
+  if (report.failures.length) process.exitCode = 1;
 }
 
 main().catch((error) => {

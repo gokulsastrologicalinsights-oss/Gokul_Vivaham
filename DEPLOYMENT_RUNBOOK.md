@@ -21,12 +21,13 @@ GitHub schedules can be delayed and can be disabled in public repositories after
 Create a GitHub Actions environment named operations restricted to main. Enter these environment secrets directly in GitHub, never in chat, source, YAML or logs:
 
 - SUPABASE_DB_URL: production Supabase session-pooler PostgreSQL URI on port 5432, including the database password. This differs from the Supabase login password and API key. Percent-encode password special characters. The exporter verifies source project and TLS certificate.
-- SUPABASE_SERVICE_ROLE_KEY: existing server-side production key, used to read Storage contents.
 - BACKUP_ENCRYPTION_KEY: 32 random bytes encoded as 64 hexadecimal characters. Generate in a trusted password manager/local tool; keep a separate owner-controlled recovery copy. Losing it makes backups unrecoverable. Preserve old keys when rotating.
+- CLOUDFLARE_R2_URL, CLOUDFLARE_R2_ACCESS_KEY_ID, and CLOUDFLARE_R2_SECRET_ACCESS_KEY: the private, bucket-scoped R2 S3 credentials used by the application.
+- R2_PROFILE_PHOTOS_BUCKET, R2_HOROSCOPES_BUCKET, and R2_ID_PROOFS_BUCKET: the three private production bucket names.
 
 First run Encrypted daily backup manually. Only after a successful run with an encrypted artifact, set repository Actions variable BACKUPS_ENABLED=true. The schedule is daily at 03:17 IST (21:47 UTC), only from main. PostgreSQL 17 clients are installed from the official PostgreSQL repository.
 
-The workflow exports a transaction-consistent database dump, roles without passwords, bucket configuration and Storage bodies. It encrypts files and manifest with AES-256-GCM, then decrypts and validates all sizes/SHA-256 checksums before publishing ciphertext-only GitHub artifacts retained seven days. Storage copying is sequential, not atomic with the database; quiesce uploads/deletions for a coordinated recovery point. Any failed export prevents publication. No weekly/monthly retention is configured. Review retention against deletion/privacy requirements.
+The workflow exports a transaction-consistent database dump, roles without passwords, private R2 bucket inventory and R2 object bodies. It encrypts files and manifest with AES-256-GCM, then decrypts and validates all sizes/SHA-256 checksums before publishing ciphertext-only GitHub artifacts retained seven days. R2 copying is sequential, not atomic with the database; quiesce uploads/deletions for a coordinated recovery point. Any failed export prevents publication. No weekly/monthly retention is configured. Review retention against deletion/privacy requirements.
 
 The repository may be public. Artifacts contain encrypted customer data: protect the key separately and restrict repository administration. Never publish decrypted files. Provider dashboard settings, external payment records, SMTP/SMS credentials and Auth signing secrets are not covered; retain these securely in owner recovery documentation.
 
