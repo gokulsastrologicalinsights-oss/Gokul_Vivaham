@@ -73,11 +73,17 @@ export default function Interests() {
   const handleRespond = async (requestId: string, status: 'accepted' | 'declined') => {
     setActionInProgress(requestId);
     try {
-      const { error } = await matchService.respondToRequest(requestId, status);
+      const { data: updatedRequest, error } = await matchService.respondToRequest(requestId, status);
       if (error) {
         alert(`Failed to update request: ${error.message}`);
       } else {
-        await queryClient.invalidateQueries({ queryKey: ['matchRequests'] });
+        queryClient.setQueryData<any[]>(['matchRequests'], (current) =>
+          current?.map((request) => request.id === requestId
+            ? { ...request, status: updatedRequest?.status || status }
+            : request),
+        );
+        if (status === 'accepted') setActiveTab('accepted');
+        void queryClient.invalidateQueries({ queryKey: ['matchRequests'] });
       }
     } catch (err: any) {
       alert(`An error occurred: ${err.message}`);
@@ -90,12 +96,18 @@ export default function Interests() {
     if (!window.confirm('Cancel this pending interest request? You will not be able to send another request to this member.')) return;
     setActionInProgress(requestId);
     try {
-      const { error } = await matchService.cancelRequest(requestId);
+      const { data: updatedRequest, error } = await matchService.cancelRequest(requestId);
       if (error) {
         alert(`Failed to cancel request: ${error.message}`);
       } else {
         alert('Request Cancelled');
-        await queryClient.invalidateQueries({ queryKey: ['matchRequests'] });
+        queryClient.setQueryData<any[]>(['matchRequests'], (current) =>
+          current?.map((request) => request.id === requestId
+            ? { ...request, status: updatedRequest?.status || 'cancelled' }
+            : request),
+        );
+        setActiveTab('history');
+        void queryClient.invalidateQueries({ queryKey: ['matchRequests'] });
       }
     } finally {
       setActionInProgress(null);

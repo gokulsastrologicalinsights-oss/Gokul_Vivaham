@@ -69,7 +69,7 @@ export default function AdminConsultations() {
     try {
       const res = await consultationService.updateBookingStatus(id, 'cancelled');
       if (res.success) {
-        setSuccessMsg('Booking has been cancelled and refund initiated.');
+        setSuccessMsg('Booking has been cancelled. Review the payment provider separately if a refund is due.');
         loadBookings();
       } else {
         setErrorMsg('Failed to cancel booking.');
@@ -404,7 +404,7 @@ export default function AdminConsultations() {
                               const {data:{session}}=await supabase.auth.getSession();
                               if(!session) throw new Error('Please sign in again.');
                               await syncServerSession(session.access_token);
-                              const response=await fetch('/api/admin/consultations',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({bookingId:b.id,meetingUrl:fields.get('meetingUrl'),durationMinutes:Number(fields.get('durationMinutes')),scheduledAt:new Date(String(fields.get('scheduledAt'))).toISOString()})});
+                              const response=await fetch('/api/admin/consultations',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'schedule',bookingId:b.id,meetingUrl:fields.get('meetingUrl'),durationMinutes:Number(fields.get('durationMinutes')),scheduledAt:new Date(String(fields.get('scheduledAt'))).toISOString()})});
                               const result=await response.json();
                               if(!response.ok) throw new Error(result.error);
                               setSuccessMsg('Meeting details saved.');

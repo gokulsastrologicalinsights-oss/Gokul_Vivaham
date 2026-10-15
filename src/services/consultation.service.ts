@@ -141,14 +141,14 @@ export const consultationService = {
    */
   async updateBookingStatus(bookingId: string, status: 'pending' | 'approved' | 'cancelled') {
     try {
-      const { data, error } = await supabase
-        .from('consultation_bookings')
-        .update({ payment_status: status })
-        .eq('id', bookingId)
-        .select()
-        .single();
-
-      return { success: !error, data, error };
+      if (status === 'pending') return { success: false, error: new Error('Pending is not an admin action.') };
+      const response = await fetch('/api/admin/consultations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'status', bookingId, status }),
+      });
+      const data = await response.json().catch(() => null);
+      return { success: response.ok, data, error: response.ok ? null : new Error(data?.error || 'Could not update booking.') };
     } catch (err: any) {
       console.error('Error updating booking status:', err);
       return { success: false, error: err };
@@ -160,16 +160,13 @@ export const consultationService = {
    */
   async rescheduleBooking(bookingId: string, consultationDate: string) {
     try {
-      const { data, error } = await supabase
-        .from('consultation_bookings')
-        .update({
-          consultation_date: consultationDate
-        })
-        .eq('id', bookingId)
-        .select()
-        .single();
-
-      return { success: !error, data, error };
+      const response = await fetch('/api/admin/consultations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reschedule', bookingId, consultationDate }),
+      });
+      const data = await response.json().catch(() => null);
+      return { success: response.ok, data, error: response.ok ? null : new Error(data?.error || 'Could not reschedule booking.') };
     } catch (err: any) {
       console.error('Error rescheduling booking:', err);
       return { success: false, error: err };

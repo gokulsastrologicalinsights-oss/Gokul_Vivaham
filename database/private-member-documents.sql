@@ -14,15 +14,16 @@ alter table public.verification_requests add column if not exists rejection_reas
 revoke insert,update,delete on public.verification_requests from authenticated;
 create or replace function public.submit_member_document(actor uuid,kind text,path text,label text) returns uuid
 language plpgsql security invoker set search_path='' as $$
-declare target uuid; rid uuid; bucket text;
+declare target uuid; rid uuid;
 begin
  if kind not in ('id_proof','horoscope') or length(label)>100 then raise exception 'Invalid document'; end if;
  select id into target from public.users where auth_user_id=actor and status='active' and deleted_at is null;
  if target is null then raise exception 'Inactive member'; end if;
  perform 1 from public.profiles where user_id=target and not is_suspended and deleted_at is null for update;
  if not found then raise exception 'Inactive profile'; end if;
- bucket:=case when kind='id_proof' then 'id-proofs' else 'horoscopes' end;
- if split_part(path,'/',1)<>actor::text or not exists(select 1 from storage.objects where bucket_id=bucket and name=path) then raise exception 'Document not owned or missing'; end if;
+ -- Documents are stored in private Cloudflare R2 buckets. The server verifies
+ -- object existence before invoking this service-role-only function.
+ if split_part(path,'/',1)<>actor::text then raise exception 'Document not owned'; end if;
  if exists(select 1 from public.profiles where user_id=target and
   case when kind='id_proof' then id_verification_status else horoscope_verification_status end='approved') then raise exception 'Document already approved'; end if;
  select id into rid from public.verification_requests where user_id=target and verification_type=kind and status='pending' limit 1 for update;

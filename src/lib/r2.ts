@@ -1,6 +1,7 @@
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -75,6 +76,14 @@ export async function getR2Object(bucket: StorageBucket, path: string) {
     bytes: await result.Body.transformToByteArray(),
     contentType: result.ContentType || 'application/octet-stream',
   };
+}
+
+export async function headR2Object(bucket: StorageBucket, path: string) {
+  assertStoragePath(path);
+  await getClient().send(new HeadObjectCommand({
+    Bucket: getR2Bucket(bucket),
+    Key: path,
+  }));
 }
 
 export async function getR2SignedUrl(bucket: StorageBucket, path: string, expiresIn = PHOTO_SIGNED_URL_TTL_SECONDS) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { assertStoragePath, headR2Object, type StorageBucket } from '@/lib/r2';
 import { z } from 'zod';
 
 const document = z.object({ type: z.enum(['id_proof','horoscope']), documentUrl: z.string().min(1).max(250), documentType: z.string().min(1).max(100) }).strict();
@@ -11,6 +12,14 @@ export async function POST(request: Request) {
   const parsed = document.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid document details' }, { status: 400 });
   const { type, documentUrl, documentType } = parsed.data;
+  const bucket: StorageBucket = type === 'id_proof' ? 'id-proofs' : 'horoscopes';
+  try {
+    assertStoragePath(documentUrl);
+    if (documentUrl.split('/', 1)[0] !== user.id) throw new Error('Document is not owned by this member.');
+    await headR2Object(bucket, documentUrl);
+  } catch {
+    return NextResponse.json({ error: 'Document is missing or unavailable. Upload your own document and retry.' }, { status: 409 });
+  }
   const { data, error } = await supabaseAdmin.rpc('submit_member_document', { actor: user.id, kind: type, path: documentUrl, label: documentType });
   if (error) return NextResponse.json({ error: 'Document is missing, unavailable, or already approved. Upload your own document and retry.' }, { status: 409 });
   return NextResponse.json({ id: data, success: true }, { headers: { 'Cache-Control': 'no-store' } });
