@@ -1,23 +1,19 @@
 'use client';
 import {useQuery} from '@tanstack/react-query';
 import Link from 'next/link';
-import {supabase} from '@/lib/supabase';
 import {useAuth} from '@/hooks/useAuth';
 import ProfileSlider from '@/components/ProfileSlider';
 import VerificationBadges from '@/components/ui/VerificationBadges';
 export default function RecentMembers(){
  const {user}=useAuth();
  const {data:members=[],error}=useQuery({queryKey:['recent-public-members',user?.id],enabled:!!user,refetchInterval:60000,queryFn:async()=>{
-  const {data,error}=await supabase.from('profiles').select('user_id,profile_id,first_name,age,city,education,occupation,users(email_verified,mobile_verified)').eq('visibility','public').eq('is_verified',true).eq('is_suspended',false).is('deleted_at',null).order('created_at',{ascending:false}).limit(20);
-  if(error)throw error;
-  const ids=(data||[]).map((p:any)=>p.user_id);
-  const {data:photos,error:photoError}=ids.length?await supabase.from('gallery_images').select('user_id,image_url,thumbnail_url').in('user_id',ids).eq('is_profile_picture',true).eq('moderation_status','approved').is('deleted_at',null):{data:[],error:null};
-  if(photoError)throw photoError;
-  const photoMap=new Map((photos||[]).map((photo:any)=>[photo.user_id,photo.thumbnail_url||photo.image_url]));
-  return (data||[]).map((profile:any)=>({...profile,image_url:photoMap.get(profile.user_id)||null}));
+  const response=await fetch('/api/matches?recent=true&limit=20',{cache:'no-store'});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||'Could not load recent members.');
+  return result.profiles||[];
  }});
  if(!user||!members.length||error)return null;
- return <section className="max-w-7xl mx-auto w-full px-4 py-12"><h2 className="text-3xl font-serif font-bold mb-3">Recently approved members</h2><p className="mb-6">Real member profiles, displayed according to their visibility settings.</p><ProfileSlider label="member profiles">{members.map(p=><article key={p.user_id} className="border border-border bg-card rounded-2xl p-5">
+ return <section className="max-w-7xl mx-auto w-full px-4 py-12"><h2 className="text-3xl font-serif font-bold mb-3">Recently approved members</h2><p className="mb-6">Real member profiles, displayed according to their visibility settings.</p><ProfileSlider label="member profiles">{members.map((p:any)=><article key={p.user_id} className="border border-border bg-card rounded-2xl p-5">
   {p.image_url?.startsWith('/api/photos?path=')?<img src={p.image_url} alt={`${p.first_name}'s profile`} loading="lazy" className="h-56 w-full object-cover rounded-xl" onError={e=>{e.currentTarget.hidden=true;}}/>:<p className="h-56 flex items-center justify-center bg-primary/10 rounded-xl">Photo protected by member privacy</p>}
   <div className="mt-3 flex items-center justify-between gap-2"><h3 className="text-xl font-semibold">{p.first_name}</h3><VerificationBadges profile={p} size="sm" /></div><p>{p.age} years · {p.city}</p><p>{p.education}</p><p>{p.occupation}</p><Link className="inline-block underline mt-4" href={`/profile/${p.profile_id}`}>View profile</Link>
  </article>)}</ProfileSlider></section>;

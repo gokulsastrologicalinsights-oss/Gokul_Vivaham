@@ -16,6 +16,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run test:membership
+      - run: npm run test:gender
       - run: node scripts/check-payment-signatures.cjs
       - run: node --test scripts/operations/operations.test.cjs
       - name: Compile with non-production configuration (never deploy this build)

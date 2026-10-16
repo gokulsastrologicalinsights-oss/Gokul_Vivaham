@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import type { Access } from '@/lib/auth/access';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 export const PHOTO_VARIANT_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(?:thumbnail|display)\.webp$/;
 
@@ -114,6 +115,8 @@ export async function authorizePhotoPath(path: string, access: Access): Promise<
   const isOwner = viewerAccountId === located.photo.user_id;
   if (located.version && !isOwner && !access.isAdmin && located.version.moderation_status !== 'approved') return null;
   if (isOwner || access.isAdmin) return { photo: located.photo, version: located.version };
+
+  if (!(await canDiscoverProfile(located.photo.user_id))) return null;
 
   if (located.photo.moderation_status !== 'approved' || located.photo.is_private || located.photo.deleted_at) return null;
 

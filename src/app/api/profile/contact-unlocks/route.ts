@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 export async function GET(req: Request) {
   try {
@@ -47,7 +48,7 @@ export async function GET(req: Request) {
     // For each unlock, fetch the candidate's actual phone & email from users table
     const enrichedUnlocks = await Promise.all(
       (unlocks || []).map(async (u: any) => {
-        if (!u.profile?.user_id) return u;
+        if (!u.profile?.user_id || !(await canDiscoverProfile(u.profile.user_id))) return null;
         const { data: targetUser } = await supabaseAdmin
           .from('users')
           .select('email, mobile_number')
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
       })
     );
 
-    return NextResponse.json({ success: true, unlocks: enrichedUnlocks });
+    return NextResponse.json({ success: true, unlocks: enrichedUnlocks.filter(Boolean) }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err: any) {
     console.error('Contact unlocks GET route error:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });

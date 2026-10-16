@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireMember } from '@/lib/membership/server';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { createRequestClient, supabaseAdmin } from '@/lib/supabase/server';
+import { authLib } from '@/lib/auth';
+import { withAuthorizedCardPhotos } from '@/lib/profile-card-photos';
 
 const input = z.object({ userIds: z.array(z.uuid()).min(1).max(100) }).strict();
-const SUMMARY_COLUMNS = 'id,user_id,profile_id,first_name,last_name,age,city,nakshatra,rasi,education,gender,is_verified,id_verification_status,horoscope_verification_status,users(email_verified,mobile_verified)' as const;
 
 export async function POST(request: Request) {
   const member = await requireMember();
@@ -32,21 +33,20 @@ export async function POST(request: Request) {
   const authorizedIds = requested.filter((id) => allowed.has(id));
   if (authorizedIds.length === 0) return NextResponse.json({ profiles: [] }, { headers: { 'Cache-Control': 'private, no-store' } });
 
-  const [{ data: profiles, error: profileError }, { data: photos, error: photoError }, { data: paid, error: paidError }] = await Promise.all([
-    supabaseAdmin.from('profiles').select(SUMMARY_COLUMNS).in('user_id', authorizedIds),
-    supabaseAdmin.from('gallery_images').select('user_id,image_url,thumbnail_url').in('user_id', authorizedIds)
-      .eq('is_profile_picture', true).eq('moderation_status', 'approved').is('deleted_at', null),
-    supabaseAdmin.from('subscriptions').select('user_id,plan:subscription_plans!inner(price)').in('user_id', authorizedIds)
-      .eq('payment_status', 'Completed').lte('start_date', new Date().toISOString()).gt('end_date', new Date().toISOString()).gt('plan.price', 0),
-  ]);
-  if (profileError || photoError || paidError) return NextResponse.json({ error: 'Could not load member summaries.' }, { status: 500 });
-  const photoMap = new Map((photos || []).map((photo) => [photo.user_id, photo.thumbnail_url || photo.image_url]));
-  const paidIds = new Set((paid || []).map((subscription) => subscription.user_id));
-  return NextResponse.json({
-    profiles: (profiles || []).map((profile) => ({
-      ...profile,
-      image_url: photoMap.get(profile.user_id) || null,
-      is_premium: paidIds.has(profile.user_id),
-    })),
-  }, { headers: { 'Cache-Control': 'private, no-store' } });
+  const client = await createRequestClient();
+  const { data, error } = await client.rpc('discover_profile_cards', { filters: { userIds: authorizedIds } });
+  const access = await authLib.getServerAccess();
+  if (error || !access) return NextResponse.json({ error: 'Could not load member summaries.' }, { status: 503 });
+  const cards = (data?.profiles || []) as Array<Record<string, unknown> & { user_id: string }>;
+  // Relationship summaries expose only the fields the existing UI needs.
+  const profiles = cards.map(p => ({ id: p.id, user_id: p.user_id, profile_id: p.profile_id,
+    first_name: p.first_name, last_name: p.last_name, age: p.age, city: p.city,
+    nakshatra: p.nakshatra, rasi: p.rasi, education: p.education, gender: p.gender,
+    is_verified: p.is_verified, id_verification_status: p.id_verification_status,
+    horoscope_verification_status: p.horoscope_verification_status, users: p.users, is_premium: p.is_premium }));
+  try {
+    return NextResponse.json({ profiles: await withAuthorizedCardPhotos(profiles, access) }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch {
+    return NextResponse.json({ error: 'Could not load member summaries.' }, { status: 503 });
+  }
 }

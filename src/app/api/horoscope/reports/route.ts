@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { membershipError, requireMember } from '@/lib/membership/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { generateCompatibility } from '@/utils/generateCompatibility';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 const input = z.object({
   targetUserId: z.uuid(),
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
   }
 
   let reportId: string | null = null;
+  if (!(await canDiscoverProfile(parsed.data.targetUserId))) return NextResponse.json({ error: 'Match profile is unavailable.' }, { status: 404 });
   try {
     const begin = await supabaseAdmin.rpc('begin_horoscope_report', {
       actor: member.memberId,

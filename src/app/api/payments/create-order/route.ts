@@ -8,6 +8,7 @@ import { paymentService } from '@/services/payment.service';
 import { FEATURED_PROFILE_PRICES, CONSULTATION_PRICE } from '@/constants/payments';
 import { razorpayConfig, paymentsConfigured } from '@/lib/payments/config';
 import { ASTROLOGERS } from '@/constants/astrologers';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 const consultationDetailsSchema = z.object({
   consultationDate: z.iso.date(),
@@ -110,6 +111,7 @@ export async function POST(req: Request) {
         .eq('is_suspended', false).eq('is_banned', false).is('deleted_at', null)
         .eq('users.status', 'active').is('users.deleted_at', null).maybeSingle();
       if (!contactTarget || contactTarget.user_id === dbUserId) return NextResponse.json({ error: 'Target profile is unavailable.' }, { status: 404 });
+      if (!(await canDiscoverProfile(contactTarget.user_id))) return NextResponse.json({ error: 'Target profile is unavailable.' }, { status: 404 });
       originalPrice = 199;
       description = `Gokul Vivaham - Single Contact Unlock`;
     } else {

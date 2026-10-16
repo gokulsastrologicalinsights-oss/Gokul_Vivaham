@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { membershipError, requireMember } from '@/lib/membership/server';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 const input = z.object({
   profileId: z.string().trim().min(1).max(64).optional(),
@@ -35,6 +36,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Could not validate the target profile.' }, { status: 500 });
   }
   const targetProfile = targetProfiles?.[0];
+  if (targetProfile && !(await canDiscoverProfile(targetProfile.user_id))) {
+    return NextResponse.json({ error: 'Target profile not found.' }, { status: 404 });
+  }
 
   if (!targetProfile || !targetProfile.user_id || targetProfile.user_id === member.memberId) {
     return NextResponse.json({ error: 'Target profile not found.' }, { status: 404 });

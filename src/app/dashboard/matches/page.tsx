@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
-  Search, Heart, HeartOff, Phone, 
-  MessageSquare, UserX, CheckCircle2, ShieldAlert, 
-  X, Star, HelpCircle, Sparkles, BookOpen 
+import {
+  Search, Heart, HeartOff, Phone,
+  MessageSquare, UserX, CheckCircle2, ShieldAlert,
+  X, Star, HelpCircle, Sparkles, BookOpen
 } from 'lucide-react';
 import MatchFilters from '@/components/matchmaking/MatchFilters';
 import { matchService } from '@/services/match.service';
@@ -28,9 +29,10 @@ function MatchesContent() {
   // Search Param Initializer
   const initialGender = searchParams?.get('gender') === 'Male' ? 'Male' : 'Female';
   const initialReligion = searchParams?.get('religion') || 'Hindu';
-  
+
   // Filter States
   const [gender, setGender] = useState(initialGender);
+  const [eligibleGender, setEligibleGender] = useState<string | null>(null);
   const [ageMin, setAgeMin] = useState(21);
   const [ageMax, setAgeMax] = useState(32);
   const [religion, setReligion] = useState(initialReligion);
@@ -40,6 +42,11 @@ function MatchesContent() {
   const [padam, setPadam] = useState('');
   const [location, setLocation] = useState('');
   const [profession, setProfession] = useState('');
+  const filterKey = useDebounce(JSON.stringify({gender,ageMin,ageMax,religion,caste,rasi,star,padam,location,profession}),250);
+  const [pagination, setPagination] = useState({filterKey:'',offset:0});
+  const pageOffset = pagination.filterKey === filterKey ? pagination.offset : 0;
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 50;
 
   // Shortlisted state
   const [shortlisted, setShortlisted] = useState<Record<string, boolean>>({});
@@ -136,9 +143,9 @@ function MatchesContent() {
   useEffect(() => {
     const gen = searchParams?.get('gender');
     const rel = searchParams?.get('religion');
-    if (gen) setGender(gen === 'Male' ? 'Male' : 'Female');
+    if (gen && !eligibleGender) setGender(gen === 'Male' ? 'Male' : 'Female');
     if (rel) setReligion(rel);
-  }, [searchParams]);
+  }, [searchParams, eligibleGender]);
 
   // Live profiles state fetched from database
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
@@ -147,25 +154,31 @@ function MatchesContent() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     const loadProfiles = async () => {
       setLoading(true);
+      setLoadError('');
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           // Resolve user's database ID and role
           const { data: userRow } = await supabase
             .from('users')
-            .select('id, role, profiles(is_premium)')
+            .select('id, role, profiles(is_premium,gender)')
             .eq('auth_user_id', user.id)
             .maybeSingle();
 
+          const mine = (userRow as any)?.profiles;
+          const opposite = mine?.gender === 'Male' ? 'Female' : mine?.gender === 'Female' ? 'Male' : null;
+          setEligibleGender(opposite);
+          if (opposite) setGender(opposite);
           const dbUserId = userRow?.id || user.id;
           setCurrentUserId(dbUserId);
 
           const isProfilePremium = (userRow as any)?.profiles?.is_premium || false;
           const isRolePremium = userRow?.role !== 'user' && userRow?.role !== 'free';
           setIsPremium(isProfilePremium || isRolePremium);
-          
+
           // Load unlocked profiles
           await fetchUnlockedProfiles();
 
@@ -183,78 +196,38 @@ function MatchesContent() {
           }
         }
 
-        const { data: featuredData } = await supabase
-          .from('featured_profiles')
-          .select('user_id')
-          .eq('is_active', true)
-          .gt('end_date', new Date().toISOString());
-        
-        const featuredSet = new Set(featuredData?.map(f => f.user_id) || []);
-
-        const { data, error } = await matchService.getMatches();
-        if (error) throw error;
-        if (data) {
-          const mapped = data.map((p: any) => ({
-            ...p,
-            is_featured: featuredSet.has(p.user_id)
-          }));
+        const result = await matchService.getMatches({...JSON.parse(filterKey),limit:pageSize,offset:pageOffset});
+        if (!active) return;
+        if (result.error) throw result.error;
+        if (result.data) {
+          const mapped = result.data;
           setAllProfiles(mapped);
+          setTotalCount(result.total || mapped.length);
           const statusResult = await matchService.getRequestStatuses(mapped.map((profile: any) => profile.user_id).filter(Boolean));
           if (!statusResult.error) setRequestStatuses(statusResult.data as Record<string, RequestStatus>);
         }
       } catch (err) {
-        setLoadError('Unable to load matches. Please refresh and try again.');
+        if (active) {setAllProfiles([]);setTotalCount(0);setLoadError('Unable to load matches. Please refresh and try again.');}
         console.error('Failed to load profiles:', err);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     loadProfiles();
-  }, []);
+    return () => {active=false;};
+  }, [filterKey,pageOffset]);
 
 
-  // Filtering Logic
-  const filteredProfiles = allProfiles.filter((profile) => {
-    // 1. Gender check: Match opposite gender of the user's dashboard selection
-    if (profile.gender !== gender) return false;
-
-    // 2. Age check
-    if (!Number.isFinite(profile.age) || profile.age < ageMin || profile.age > ageMax) return false;
-
-    // 3. Religion check
-    if (religion && (profile.religion || '').toLowerCase() !== religion.toLowerCase()) return false;
-
-    // Gate advanced filters client-side to prevent bypass
-    if (isPremium) {
-      // 4. Caste filter
-      if (caste && !(profile.caste || '').toLowerCase().includes(caste.toLowerCase())) return false;
-
-      // 5. Rasi filter
-      if (rasi && (profile.rasi || '').toLowerCase() !== rasi.toLowerCase()) return false;
-      
-      // 5b. Padam filter
-      if (padam && String(profile.padam || '') !== String(padam)) return false;
-
-      // 6. Star filter
-      if (star && !(profile.star || '').toLowerCase().includes(star.toLowerCase())) return false;
-
-      // 7. Location filter
-      if (location && !(profile.location || '').toLowerCase().includes(location.toLowerCase())) return false;
-
-      // 8. Profession filter
-      if (profession && !(profile.education || '').toLowerCase().includes(profession.toLowerCase())) return false;
-    }
-
-    return true;
-  });
+  // All filters are applied in the database before LIMIT/OFFSET.
+  const filteredProfiles = allProfiles;
 
   const toggleShortlist = async (id: string, name: string) => {
     if (!currentUserId) return;
-    
+
     // Find profile corresponding to the match ID to get user_id
     const targetProfile = allProfiles.find(p => p.id === id);
     const targetUserId = targetProfile?.user_id || id;
-    const isCurrentlyShortlisted = shortlisted[id];
+    const isCurrentlyShortlisted = shortlisted[targetUserId];
 
     try {
       if (isCurrentlyShortlisted) {
@@ -263,8 +236,8 @@ function MatchesContent() {
           .delete()
           .eq('user_id', currentUserId)
           .eq('favorite_user_id', targetUserId);
-        
-          setShortlisted(prev => ({ ...prev, [id]: false }));
+
+          setShortlisted(prev => ({ ...prev, [targetUserId]: false }));
         alert(`Removed ${name} from Shortlist.`);
       } else {
         await supabase
@@ -274,7 +247,7 @@ function MatchesContent() {
             favorite_user_id: targetUserId
           });
 
-          setShortlisted(prev => ({ ...prev, [id]: true }));
+          setShortlisted(prev => ({ ...prev, [targetUserId]: true }));
         alert(`Added ${name} to Shortlist!`);
       }
     } catch (e: any) {
@@ -373,7 +346,7 @@ function MatchesContent() {
 
   return (
     <div className="flex flex-col gap-6 text-left">
-      
+
       {/* Search Header Banner */}
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl md:text-3xl font-serif font-bold text-zinc-900 dark:text-zinc-55">
@@ -382,7 +355,7 @@ function MatchesContent() {
         <p className="text-xs text-zinc-500 dark:text-zinc-400 font-light">
           Filter matching profiles using traditional compatibility guidance, location parameters, and community standards.
         </p>
-        
+
         {/* Compliance Matching Warning Banner */}
         <div className="p-3 text-[10px] md:text-xs bg-sandal-50/50 dark:bg-zinc-900/60 border border-sandal-200/50 dark:border-zinc-800/80 rounded-xl text-zinc-500 dark:text-zinc-450 leading-relaxed italic">
           Disclaimer: Horoscope compatibility is based on traditional astrological systems and should not be treated as absolute certainty or professional legal/medical advice.
@@ -391,11 +364,12 @@ function MatchesContent() {
 
       {/* FILTER & MATCHES GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* LEFT COLUMN: FILTER SIDEBAR */}
         <MatchFilters
           gender={gender}
           setGender={setGender}
+          eligibleGender={eligibleGender}
           ageMin={ageMin}
           setAgeMin={setAgeMin}
           ageMax={ageMax}
@@ -431,11 +405,16 @@ function MatchesContent() {
 
         {/* RIGHT COLUMN: PROFILES LISTING */}
         <div className="lg:col-span-8 flex flex-col gap-6">
-          
+
           <div className="text-xs text-zinc-500 font-medium">
-            Found {filteredProfiles.length} matching profile(s)
+            Found {totalCount} matching profile(s)
           </div>
 
+          {totalCount > pageSize && <nav aria-label="Profile pages" className="flex items-center gap-4">
+            <button type="button" disabled={loading || pageOffset === 0} onClick={() => setPagination({filterKey,offset:Math.max(0,pageOffset-pageSize)})}>Previous</button>
+            <span>{pageOffset+1}–{Math.min(pageOffset+pageSize,totalCount)} of {totalCount}</span>
+            <button type="button" disabled={loading || pageOffset+pageSize >= totalCount} onClick={() => setPagination({filterKey,offset:pageOffset+pageSize})}>Next</button>
+          </nav>}
           {filteredProfiles.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredProfiles.map((profile) => (
@@ -446,7 +425,7 @@ function MatchesContent() {
                   {/* Photo Section */}
                   <div className="w-full h-40 rounded-2xl bg-gradient-to-tr from-sandal-100 to-amber-50 dark:from-zinc-800 dark:to-zinc-850 flex items-center justify-center relative">
                     <Sparkles className="h-10 w-10 text-maroon-500/10" />
-                    
+
                     <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1.5 items-start">
                       <VerificationBadges profile={profile} size="sm" />
                       {unlockedProfiles.has(profile.id) && (
@@ -501,13 +480,13 @@ function MatchesContent() {
 
                   {/* Actions Bar */}
                   <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-850 flex items-center gap-2">
-                    
+
                     {/* Shortlist Icon Button */}
                     <button
                       onClick={() => toggleShortlist(profile.id, profile.name)}
                       className={`p-2 rounded-lg border transition-colors cursor-pointer ${
-                        shortlisted[profile.id] 
-                          ? 'border-rose-300/40 bg-rose-500/10 text-rose-600' 
+                        shortlisted[profile.user_id]
+                          ? 'border-rose-300/40 bg-rose-500/10 text-rose-600'
                           : 'border-zinc-200 dark:border-zinc-850 text-zinc-400 hover:text-zinc-600'
                       }`}
                       title={shortlisted[profile.id] ? 'Remove Shortlist' : 'Shortlist Profile'}
@@ -547,7 +526,7 @@ function MatchesContent() {
       {activeProfile && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-sandal-200 dark:border-zinc-800 overflow-hidden flex flex-col relative max-h-[90vh]">
-            
+
             {/* Header info */}
             <div className="p-6 border-b border-zinc-100 dark:border-zinc-850 flex justify-between items-start">
               <div className="flex flex-col text-left gap-1">
@@ -579,7 +558,7 @@ function MatchesContent() {
 
             {/* Scrollable details */}
             <div className="p-6 overflow-y-auto text-left flex flex-col gap-6 font-light text-zinc-700 dark:text-zinc-350">
-              
+
               {/* Bio description */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-maroon-600 dark:text-gold-400 uppercase tracking-widest">About Me</span>
@@ -590,7 +569,7 @@ function MatchesContent() {
 
               {/* Grid 1: Basic & Astrological */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 <div className="flex flex-col gap-2">
                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
                     <BookOpen className="h-4 w-4 text-maroon-500" /> Basic Details
@@ -630,7 +609,7 @@ function MatchesContent() {
 
               {/* Grid 2: Profession & Family */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 <div className="flex flex-col gap-2">
                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Education &amp; Work</span>
                   <ul className="text-xs space-y-1.5 font-light">

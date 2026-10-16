@@ -154,7 +154,8 @@ test('server authorization and RLS protect usage, phone data, and plan mutation'
 
 test('plan-specific interests, filters, horoscope access, and responsive plan actions are wired', () => {
   assert.match(read('src/app/api/interests/route.ts'), /interest_send_enabled/);
-  assert.match(read('src/app/api/matches/route.ts'), /advanced_filters_enabled/);
+  assert.match(read('src/app/api/matches/route.ts'), /rpc\('discover_profile_cards'/);
+  assert.match(read('supabase/migrations/20261015122404_secure_gender_profile_discovery.sql'), /plan\.advanced_filters_enabled/);
   assert.match(read('src/app/api/horoscope/compatibility/route.ts'), /horoscope_percentage_level/);
   const pricing = read('src/app/(public)/pricing/page.tsx');
   for (const label of ['Sign Up Free', 'Get Silver', 'Go Gold Plan', 'Go Diamond Plan', 'Most Popular']) {

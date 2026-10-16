@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { isValidCombination } from '@/constants/religion-community-mapping';
 
 const isMockMode = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,6 +17,9 @@ export const matchService = {
     star?: string;
     padam?: string;
     location?: string;
+    profession?: string;
+    limit?: number;
+    offset?: number;
   }) {
     try {
       if (isMockMode()) {
@@ -165,6 +167,9 @@ export const matchService = {
       if (filters?.star) params.set('star', filters.star);
       if (filters?.padam) params.set('padam', filters.padam);
       if (filters?.location) params.set('location', filters.location);
+      if (filters?.profession) params.set('profession', filters.profession);
+      if (filters?.limit) params.set('limit', String(filters.limit));
+      if (filters?.offset) params.set('offset', String(filters.offset));
       const serverResponse = await fetch(`/api/matches?${params.toString()}`, { cache: 'no-store' });
       const serverResult = await serverResponse.json();
       if (!serverResponse.ok) return { data: [], error: new Error(serverResult.error || 'Could not load matches.') };
@@ -223,6 +228,7 @@ export const matchService = {
           siblings: profile.siblings,
           is_verified: profile.is_verified,
           is_premium: profile.is_premium,
+          is_featured: profile.is_featured,
           marital_status: profile.marital_status,
           score: compatibilityScore,
           user_id: profile.user_id,
@@ -234,15 +240,9 @@ export const matchService = {
         };
       });
 
-      // Filter out invalid combinations and blocked users
-      const validProfiles = formatted ? formatted.filter((p: any) => {
-        if (p.religion && p.caste) {
-          return isValidCombination(p.religion, p.caste);
-        }
-        return true;
-      }) : [];
-
-      return { data: validProfiles, error };
+      // Eligibility, blocking, search filters, count and pagination are computed
+      // by the authenticated database function before any cards are returned.
+      return { data: formatted || [], total: serverResult.total || 0, error };
     } catch (err: any) {
       return { data: [], error: err };
     }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getMemberEntitlements, requireMember } from '@/lib/membership/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { generateCompatibility } from '@/utils/generateCompatibility';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 const input = z.object({ targetUserId: z.uuid() }).strict();
 
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid match profile is required.' }, { status: 400 });
   }
 
+  if (!(await canDiscoverProfile(parsed.data.targetUserId))) return NextResponse.json({ error: 'Match profile is unavailable.' }, { status: 404 });
   const [{ data: profiles, error }, entitlements] = await Promise.all([
     supabaseAdmin
     .from('profiles')

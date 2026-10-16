@@ -6,6 +6,7 @@ import ReligionCommunityDropdowns from '../ui/input/ReligionCommunityDropdowns';
 
 interface MatchFiltersProps {
   gender: string;
+  eligibleGender?: string | null;
   setGender: (v: string) => void;
   ageMin: number;
   setAgeMin: (v: number) => void;
@@ -32,6 +33,7 @@ interface MatchFiltersProps {
 
 export default function MatchFilters({
   gender,
+  eligibleGender,
   setGender,
   ageMin,
   setAgeMin,
@@ -79,6 +81,7 @@ export default function MatchFilters({
           <div className="grid grid-cols-2 gap-2 bg-sandal-50/50 dark:bg-zinc-950 p-1 rounded-lg">
             <button
               type="button"
+              disabled={!!eligibleGender && eligibleGender !== 'Female'}
               onClick={() => setGender('Female')}
               className={`py-1.5 rounded font-bold uppercase transition-all cursor-pointer ${
                 gender === 'Female' 
@@ -90,6 +93,7 @@ export default function MatchFilters({
             </button>
             <button
               type="button"
+              disabled={!!eligibleGender && eligibleGender !== 'Male'}
               onClick={() => setGender('Male')}
               className={`py-1.5 rounded font-bold uppercase transition-all cursor-pointer ${
                 gender === 'Male' 

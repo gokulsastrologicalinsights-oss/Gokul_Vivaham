@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authLib } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { getMemberEntitlements } from '@/lib/membership/server';
+import { canDiscoverProfile } from '@/lib/profile-eligibility';
 
 const uuidSchema = z.string().uuid();
 const requestBodySchema = z.object({
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'A valid recipient is required.' }, { status: 400 });
 
   const { receiverUserId } = parsed.data;
+  if (!(await canDiscoverProfile(receiverUserId))) return NextResponse.json({ error: 'Member unavailable.' }, { status: 404 });
   if (receiverUserId === member.id) {
     return NextResponse.json({ error: 'You cannot send an interest request to yourself.' }, { status: 400 });
   }

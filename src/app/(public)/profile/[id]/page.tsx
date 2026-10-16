@@ -492,8 +492,8 @@ export default function ProfileView({ params }: { params: Promise<{ id: string }
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-light text-zinc-655 dark:text-zinc-400">
               <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-850 pb-2">
-                <span className="font-semibold text-zinc-850 dark:text-zinc-200">Age / DOB:</span>
-                <span>{profile.age || 'N/A'} yrs / {profile.date_of_birth || 'N/A'}</span>
+                <span className="font-semibold text-zinc-850 dark:text-zinc-200">Age:</span>
+                <span>{profile.age || 'N/A'} years</span>
               </div>
               <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-850 pb-2">
                 <span className="font-semibold text-zinc-850 dark:text-zinc-200">Height / Weight:</span>

@@ -9,6 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:membership": "node --test scripts/membership/membership.test.cjs",
+    "test:gender": "node --test scripts/gender/*.test.cjs",
+    "test:gender:staging": "node --test scripts/gender/staging-api.cjs",
     "storage:migrate": "node scripts/migrate-storage-to-r2.cjs"
   },
   "dependencies": {
@@ -28,6 +30,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import MatchComparison from '@/components/matchmaking/MatchComparison';
 
 export default function Shortlist() {
@@ -24,37 +25,30 @@ export default function Shortlist() {
     fetchUnlockedProfiles();
   }, []);
   
-  // Shortlisted Candidates List
-  const [shortlisted, setShortlisted] = useState([
-    {
-      id: 'GVV-089',
-      name: 'Gokulakrishnan M.',
-      age: 28,
-      height: '178 cm',
-      education: 'MBA Project Manager',
-      location: 'Bangalore',
-      rasi: 'Dhanusu',
-      star: 'Pooradam',
-      caste: 'Iyer',
-      score: 95
-    },
-    {
-      id: 'GVV-112',
-      name: 'Karthik N.',
-      age: 27,
-      height: '180 cm',
-      education: 'B.Tech Tech Lead',
-      location: 'Singapore',
-      rasi: 'Simham',
-      star: 'Pooram',
-      caste: 'Iyer',
-      score: 91
-    }
-  ]);
-
-  const handleRemove = (id: string, name: string) => {
-    setShortlisted(prev => prev.filter(item => item.id !== id));
-    alert(`Removed ${name} from your shortlist.`);
+  const [shortlisted, setShortlisted] = useState<Array<{id:string;user_id:string;name:string;age:number;height:string;education:string;location:string;rasi:string;star:string;caste:string;score:number}>>([]);
+  const [loadError, setLoadError] = useState('');
+  useEffect(() => {
+    let active = true;
+    fetch('/api/matches?shortlisted=true',{cache:'no-store'}).then(async response => {
+      const result = await response.json();
+      if(!response.ok)throw new Error('Unable to load your shortlist.');
+      if(active)setShortlisted((result.profiles||[]).map((p:Record<string,any>)=>({
+        id:p.profile_id,user_id:p.user_id,name:[p.first_name,p.last_name].filter(Boolean).join(' '),age:p.age,
+        height:p.height_cm ? p.height_cm+' cm':'N/A',education:p.education||'N/A',location:p.city||'N/A',
+        rasi:p.rasi||'',star:p.nakshatra||'',caste:p.caste||'',score:85,
+      })));
+    }).catch(()=>{if(active)setLoadError('Unable to load your shortlist. Please refresh and try again.');});
+    return ()=>{active=false;};
+  },[]);
+  const handleRemove = async (id: string, _name: string) => {
+    const target=shortlisted.find(p=>p.id===id);
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!target||!user)return;
+    const {data:account,error:accountError}=await supabase.from('users').select('id').eq('auth_user_id',user.id).maybeSingle();
+    if(accountError||!account)return;
+    const {error}=await supabase.from('favorites').delete().eq('user_id',account.id).eq('favorite_user_id',target.user_id);
+    if(error){setLoadError('Unable to remove this profile. Please try again.');return;}
+    setShortlisted(prev=>prev.filter(item=>item.id!==id));
   };
 
   return (
@@ -72,6 +66,7 @@ export default function Shortlist() {
         </div>
       </div>
 
+      {loadError && <p role="alert">{loadError}</p>}
       {shortlisted.length > 0 ? (
         <MatchComparison shortlisted={shortlisted} onRemove={handleRemove} unlockedProfiles={unlockedProfiles} />
       ) : (
