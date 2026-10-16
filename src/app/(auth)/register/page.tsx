@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
 import RegisterStepper from '@/components/register/RegisterStepper';
 import { SupportSection } from '@/components/contact/SupportSection';
 import Link from 'next/link';
@@ -41,21 +41,9 @@ export default function RegisterPage() {
 
       <div className="relative z-10 w-full max-w-4xl px-4 flex flex-col items-center">
         {/* Branding */}
-        <div className="flex flex-col items-center justify-center mb-8 gap-2">
-          <Link href="/" className="flex flex-col items-center justify-center gap-2 group">
-            <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:border-white/40 transition-colors">
-              <Heart className="w-6 h-6 text-[#B71C1C] fill-[#B71C1C]" />
-            </div>
-            <div className="text-center">
-              <div className="font-serif font-bold text-3xl text-white tracking-tight drop-shadow-md">
-                Gokul Vivaham
-              </div>
-              <div className="text-[10px] font-semibold text-[#D4AF37] tracking-[0.2em] uppercase mt-1 font-sans drop-shadow-md">
-                கோகுல் விவாஹம்
-              </div>
-            </div>
-          </Link>
-        </div>
+        <Link href="/" className="brand-home-link brand-plaque mb-8" aria-label="Gokul Vivaham home">
+          <BrandLogo size="large" />
+        </Link>
 
         {/* Stepper Card wrapped in Glassmorphism */}
         <div className="w-full glass-panel p-4 sm:p-8 rounded-[2rem] shadow-xl text-left relative overflow-hidden mb-8">

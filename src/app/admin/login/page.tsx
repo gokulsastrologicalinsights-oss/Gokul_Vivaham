@@ -4,12 +4,13 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  ShieldAlert, Lock, Mail, Key, ShieldCheck, 
+  Lock, Mail, Key, ShieldCheck,
   Terminal, ArrowRight, Server, Radio
 } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from '@/components/ThemeToggle';
+import BrandLogo from '@/components/BrandLogo';
 import { syncServerSession } from '@/lib/auth/session-client';
 
 export default function AdminLogin() {
@@ -128,17 +129,10 @@ export default function AdminLogin() {
 
         {/* Admin Branding */}
         <div className="flex flex-col items-center gap-4 mb-8 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center text-primary shadow-inner">
-            <ShieldAlert className="h-8 w-8 text-primary" />
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <h1 className="text-xl font-mono font-bold tracking-widest uppercase text-foreground">
-              Gokul Vivaham Admin
-            </h1>
-            <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
-              Control Panel Portal v3.1
-            </span>
-          </div>
+          <Link href="/" className="brand-home-link brand-plaque" aria-label="Gokul Vivaham home">
+            <BrandLogo size="compact" />
+          </Link>
+          <h1 className="text-xs font-mono font-bold text-muted uppercase tracking-wider">Admin Control Panel</h1>
         </div>
 
         {/* System logs simulator */}

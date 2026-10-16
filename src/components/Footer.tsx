@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import BrandLogo from './BrandLogo';
 import { usePathname } from 'next/navigation';
-import { Heart, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
 import { contactConfig } from '@/config/contact.config';
 import { informationPages } from '@/config/information-pages';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,20 +22,12 @@ export default function Footer() {
   return (
     <footer className="w-full bg-card border-t border-border pt-12 pb-28 md:py-16 transition-colors">
       <div className="site-container">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr_1fr] gap-8">
           
           {/* Logo & Description */}
-          <div className="md:col-span-1.5 flex flex-col gap-4">
-            <Link href={homeHref} className="flex flex-col select-none group">
-              <div className="flex items-center gap-1.5">
-                <Heart className="h-5 w-5 text-primary fill-primary" />
-                <span className="text-xl font-serif font-bold text-primary">
-                  Gokul Vivaham
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-primary/85 pl-6 mt-0.5">
-                கோகுல் விவாஹம்
-              </span>
+          <div className="min-w-0 flex flex-col gap-4">
+            <Link href={homeHref} className="brand-home-link brand-plaque self-start" aria-label="Gokul Vivaham home">
+              <BrandLogo size="compact" />
             </Link>
             <p className="text-sm text-muted mt-2 leading-relaxed font-light">
               Where Matches Begin with Compatibility. Delivering a trustworthy, premium, and culturally elegant South Indian matrimony experience.

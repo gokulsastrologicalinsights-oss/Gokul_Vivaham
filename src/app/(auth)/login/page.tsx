@@ -1,6 +1,7 @@
 'use client';
 
-import { Heart } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
+import Link from 'next/link';
 import LoginForm from '@/components/auth/LoginForm';
 
 export default function Login() {
@@ -39,19 +40,9 @@ export default function Login() {
 
       <div className="relative z-10 w-full max-w-md px-4 flex flex-col items-center">
         {/* Branding */}
-        <div className="flex flex-col items-center justify-center mb-8 gap-2">
-          <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
-            <Heart className="w-6 h-6 text-[#B71C1C] fill-[#B71C1C]" />
-          </div>
-          <div className="text-center">
-            <div className="font-serif font-bold text-3xl text-white tracking-tight drop-shadow-md">
-              Gokul Vivaham
-            </div>
-            <div className="text-[10px] font-semibold text-[#D4AF37] tracking-[0.2em] uppercase mt-1 font-sans drop-shadow-md">
-              கோகுல் விவாஹம்
-            </div>
-          </div>
-        </div>
+        <Link href="/" className="brand-home-link brand-plaque mb-8" aria-label="Gokul Vivaham home">
+          <BrandLogo size="large" />
+        </Link>
 
         <LoginForm />
 

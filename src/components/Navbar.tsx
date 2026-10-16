@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Heart, User, LogOut, ShieldAlert, Phone } from 'lucide-react';
+import { Menu, X, User, LogOut, ShieldAlert, Phone } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import BrandLogo from './BrandLogo';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { contactConfig } from '@/config/contact.config';
@@ -61,26 +62,18 @@ export default function Navbar() {
     : '/';
 
   return (
-    <nav className="sticky top-0 z-50 w-full glass-panel border-b border-border shadow-sm">
+    <nav className="brand-surface brand-navbar sticky top-0 z-50 w-full border-b border-border shadow-sm">
       <div className="site-container">
-        <div className="flex min-h-20 items-center justify-between gap-4 py-2">
+        <div className="flex min-h-20 items-center justify-between gap-3 py-2">
           {/* Logo & Branding */}
           <div className="flex min-w-0 items-center">
-            <Link href={homeHref} className="flex flex-col justify-center select-none group">
-              <div className="flex items-center gap-1.5">
-                <Heart className="h-6 w-6 text-primary fill-primary group-hover:scale-110 transition-transform duration-300" />
-                <span className="truncate text-xl font-serif font-bold text-primary leading-none sm:text-2xl">
-                  Gokul Vivaham
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-primary/85 pl-7 tracking-wider mt-0.5">
-                கோகுல் விவாஹம்
-              </span>
+            <Link href={homeHref} className="brand-home-link" aria-label="Gokul Vivaham home">
+              <BrandLogo />
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden min-w-0 items-center gap-4 lg:flex xl:gap-6">
+          <div className="hidden min-w-0 xl:flex items-center gap-4">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -101,10 +94,10 @@ export default function Navbar() {
               href={contactConfig.whatsapp.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold transition-all border border-emerald-500/25 shrink-0"
+              className="hidden 2xl:inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-200 rounded-full text-xs font-bold transition-all border border-emerald-500/25 shrink-0"
               aria-label="Connect with us on WhatsApp"
             >
-              <Phone className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <Phone className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
               <span>Support: {contactConfig.phone.display}</span>
             </a>
 
@@ -142,7 +135,7 @@ export default function Navbar() {
                       localStorage.removeItem('gokul_matrimony_register_draft');
                     }
                   }}
-                  className="flex items-center justify-center px-5 h-10 rounded-full bg-brand-red text-white text-xs font-bold uppercase tracking-widest hover:bg-brand-red-light hover:shadow-lg transition-all duration-200"
+                  className="flex items-center justify-center px-5 h-10 rounded-full brand-register bg-brand-red text-white text-xs font-bold uppercase tracking-widest hover:bg-brand-red-light hover:shadow-lg transition-all duration-200"
                 >
                   Register
                 </Link>
@@ -151,20 +144,20 @@ export default function Navbar() {
           </div>
 
           {/* Mobile/Tablet menu button */}
-          <div className="lg:hidden flex items-center gap-3">
+          <div className="xl:hidden flex items-center gap-1 sm:gap-3 shrink-0">
             <a
               href={contactConfig.phone.link}
-              className="p-2 rounded-full border border-border text-primary hover:bg-surface flex items-center justify-center shrink-0 touch-target"
+              className="p-2 rounded-full border border-border text-primary hover:bg-surface hidden sm:flex items-center justify-center shrink-0 touch-target"
               title="Call Support"
               aria-label="Call Support"
             >
               <Phone className="h-4.5 w-4.5" />
             </a>
-            <ThemeToggle />
+            <div className="hidden sm:block"><ThemeToggle /></div>
             {user && (
               <Link
                 href="/dashboard/profile"
-                className="p-2 rounded-full border border-border text-primary hover:bg-surface flex items-center justify-center shrink-0 touch-target"
+                className="p-2 rounded-full border border-border text-primary hover:bg-surface hidden sm:flex items-center justify-center shrink-0 touch-target"
                 title="View Profile"
               >
                 <User className="h-4.5 w-4.5" />
@@ -174,6 +167,8 @@ export default function Navbar() {
               onClick={() => setIsOpen(!isOpen)}
               className="p-2 rounded-lg text-foreground hover:bg-surface focus:outline-none touch-target"
               aria-label="Toggle menu"
+              aria-expanded={isOpen}
+              aria-controls="primary-mobile-menu"
             >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -183,8 +178,14 @@ export default function Navbar() {
 
       {/* Mobile/Tablet Menu */}
       {isOpen && (
-        <div className="lg:hidden glass-panel border-t border-border shadow-lg animate-in fade-in slide-in-from-top duration-300">
+        <div id="primary-mobile-menu" className="xl:hidden border-t border-border shadow-lg animate-in fade-in slide-in-from-top duration-300">
           <div className="px-2 pt-2 pb-4 space-y-1 sm:px-3">
+            <div className="sm:hidden flex items-center justify-between gap-4 px-3 py-2">
+              <a href={contactConfig.phone.link} className="inline-flex items-center gap-2 text-sm text-primary min-h-11">
+                <Phone className="h-4 w-4" /> Call Support
+              </a>
+              <ThemeToggle />
+            </div>
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -204,6 +205,14 @@ export default function Navbar() {
 
             {user ? (
               <>
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="sm:hidden flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-surface"
+                >
+                  <User className="h-5 w-5" />
+                  View Profile
+                </Link>
                 <Link
                   href="/dashboard"
                   onClick={() => setIsOpen(false)}
@@ -240,7 +249,7 @@ export default function Navbar() {
                       localStorage.removeItem('gokul_matrimony_register_draft');
                     }
                   }}
-                  className="flex items-center justify-center w-full px-4 py-2 bg-brand-red text-white font-bold rounded-full hover:bg-brand-red-light shadow-md"
+                  className="flex items-center justify-center w-full px-4 py-2 brand-register bg-brand-red text-white font-bold rounded-full hover:bg-brand-red-light shadow-md"
                 >
                   Register
                 </Link>

@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  Users, Star, ShieldAlert, BarChart3, CreditCard, 
+  Users, ShieldAlert, BarChart3, CreditCard,
   CheckSquare, Settings, Bell, LogOut, Menu, X, 
   ChevronLeft, ChevronRight, Terminal, ShieldCheck, Database,
   Camera, Calendar, Heart, UserCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import ThemeToggle from '@/components/ThemeToggle';
+import BrandLogo from '@/components/BrandLogo';
 
 const isMockMode = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -88,16 +89,11 @@ export default function AdminLayout({
         </button>
 
         {/* Sidebar Logo */}
-        <div className={`h-20 flex items-center border-b border-border ${sidebarCollapsed ? 'justify-center' : 'px-6 gap-3'}`}>
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <Star className="h-5 w-5 fill-primary/20" />
-          </div>
-          {!sidebarCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-serif font-bold text-foreground tracking-wide">Gokul Vivaham</span>
-              <span className="text-[9px] text-primary font-mono tracking-widest mt-0.5 font-bold">CONTROL PANEL</span>
-            </div>
-          )}
+        <div className="brand-surface min-h-24 flex flex-col justify-center border-b border-border px-3 py-3">
+          <Link href="/" className="brand-home-link self-center" aria-label="Gokul Vivaham home">
+            <BrandLogo size="compact" iconOnly={sidebarCollapsed} />
+          </Link>
+          {!sidebarCollapsed && <span className="text-[9px] text-primary tracking-widest mt-2 text-center font-bold">CONTROL PANEL</span>}
         </div>
 
         {/* Navigation Items */}
@@ -148,16 +144,10 @@ export default function AdminLayout({
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <aside className="w-72 bg-card border-r border-border flex flex-col h-full animate-in slide-in-from-left duration-300">
-            <div className="h-20 flex items-center justify-between px-6 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                  <Star className="h-4 w-4 fill-primary/10" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-serif font-bold text-foreground">Gokul Vivaham</span>
-                  <span className="text-[8px] text-primary font-mono mt-0.5 font-bold">CONTROL PANEL</span>
-                </div>
-              </div>
+            <div className="brand-surface min-h-24 flex items-center justify-between px-3 gap-2 border-b border-border">
+              <Link href="/" className="brand-home-link" aria-label="Gokul Vivaham home">
+                <BrandLogo size="compact" />
+              </Link>
               <button 
                 onClick={() => setMobileMenuOpen(false)}
                 className="p-1.5 rounded-lg bg-surface hover:bg-background text-muted cursor-pointer"
