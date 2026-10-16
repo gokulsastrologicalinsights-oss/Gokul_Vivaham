@@ -18,6 +18,12 @@ function harness(file,{authorized=true,allowed=false,rows={},requestError=null}=
   const access=authorized?{user:{id:viewer},isAdmin:false,mfaRequired:false}:null;
   const requestClient={rpc:async(name,args)=>{calls.push({requestRpc:name,args});return {data:name==='can_discover_profile'?allowed:{profiles:[],total:0},error:requestError};}};
   const stubs={
+    '@/lib/request-origin': (() => {
+      const originExports = {};
+      const originSource = ts.transpileModule(fs.readFileSync(path.join(root,'src/lib/request-origin.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+      vm.runInNewContext(originSource,{exports:originExports,URL});
+      return originExports;
+    })(),
     'server-only':{},
     'next/server':{NextResponse:{json:(body,options)=>Response.json(body,options)}},
     '@/lib/supabase/server':{supabaseAdmin:admin,createRequestClient:async()=>requestClient},
@@ -33,7 +39,7 @@ function harness(file,{authorized=true,allowed=false,rows={},requestError=null}=
   vm.runInNewContext(source,{exports,require:n=>n in stubs?stubs[n]:require(n),console,URL,Request,Response},{filename:file});
   return {exports,calls};
 }
-const request=body=>new Request('https://test.local/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+const request=body=>new Request('https://test.local/api',{method:'POST',headers:{'Content-Type':'application/json','Origin':'https://test.local'},body:JSON.stringify(body)});
 
 test('direct profile URL returns 404 before credits or photos for an ineligible target',async()=>{
   const h=harness('src/app/api/profiles/[id]/route.ts',{rows:{profiles:[{id:target,user_id:target,first_name:'PRIVATE'}]}});

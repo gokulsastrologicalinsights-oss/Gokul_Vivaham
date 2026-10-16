@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node CommonJS test runner. */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -77,7 +78,8 @@ test('contact reveal boundaries are serialized and unique per profile and subscr
   assert.match(route, /profileUuid: z\.uuid\(\)\.optional\(\)/);
   assert.doesNotMatch(route, /\.from\('profiles'\)[\s\S]{0,300}\.eq\('status'/);
   assert.match(route, /rpc\('consume_contact_reveal'/);
-  assert.ok(route.indexOf("rpc('consume_contact_reveal'") < route.indexOf("select('email,mobile_number')"));
+  assert.ok(route.indexOf("select('email,mobile_number')") < route.indexOf("rpc('consume_contact_reveal'"), 'failed contact lookup must not consume a credit');
+  assert.ok(route.indexOf("rpc('consume_contact_reveal'") < route.indexOf('success: true,'), 'contact data is returned only after entitlement authorization succeeds');
 });
 
 test('daily profile views use an India reset date, a uniqueness boundary, and server-only detail route', () => {

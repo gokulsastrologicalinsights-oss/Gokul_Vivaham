@@ -4,8 +4,11 @@ import { ContactCard } from '@/components/contact/ContactCard';
 import {SupportRequests} from '@/components/contact/SupportRequests';
 import { ContactForm } from '@/components/contact/ContactForm';
 import { BusinessHours } from '@/components/contact/BusinessHours';
+import { contactConfig } from '@/config/contact.config';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Contact() {
+  const { isAuthenticated } = useAuth();
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 text-left flex flex-col gap-12 flex-grow">
       
@@ -31,26 +34,16 @@ export default function Contact() {
         {/* RIGHT COLUMN: CONTACT FORM & MAP */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           <ContactForm />
-          <SupportRequests />
+          {isAuthenticated && <SupportRequests />}
           
-          {/* Embedded Google Maps Placement */}
+          {/* Open the external map only when requested. */}
           <div className="overflow-hidden rounded-2xl bg-white dark:bg-zinc-950 border border-sandal-300/40 dark:border-zinc-800/80 shadow-xl p-4">
             <h3 className="text-sm font-serif font-bold text-maroon-700 dark:text-gold-400 mb-3 pl-1">
               Find Us on Google Maps
             </h3>
-            <div className="relative w-full h-64 sm:h-80 rounded-xl overflow-hidden border border-sandal-100 dark:border-zinc-800">
-              <iframe
-                title="Gokul Vivaham Office Location"
-                src="https://maps.google.com/maps?q=165,%20Sakreeshwari%20Nagar,%202nd%20Street,%20Thiruverkadu,%20Chennai,%20Tamil%20Nadu%20600077&t=&z=14&ie=UTF8&iwloc=&output=embed"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="absolute inset-0"
-              />
-            </div>
+            <p className="text-sm text-muted mb-3">{contactConfig.address.display}</p>
+            <a className="inline-block underline py-2" href={'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(contactConfig.address.display)} target="_blank" rel="noopener noreferrer">Open office location in Google Maps (new tab)</a>
+            <p className="text-xs text-muted mt-2">Opening the map connects to Google under its privacy practices.</p>
           </div>
         </div>
 
@@ -59,4 +52,3 @@ export default function Contact() {
     </div>
   );
 }
-

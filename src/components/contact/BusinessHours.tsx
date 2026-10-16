@@ -34,7 +34,7 @@ export function BusinessHours() {
       </div>
       
       <p className="text-[10.5px] leading-relaxed text-zinc-500 dark:text-zinc-500 mt-4 border-t border-sandal-100/50 dark:border-zinc-800/50 pt-3">
-        * Online match support and automatic matching profiles are active 24/7. Physical office visits are welcome during the timings listed above.
+        Please contact the office during the published hours to arrange a visit. These are support hours in Indian Standard Time.
       </p>
     </div>
   );

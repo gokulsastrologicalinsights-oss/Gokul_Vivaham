@@ -16,6 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: node scripts/check-information-pages.cjs
       - run: npm run test:membership
       - run: npm run test:gender
       - run: node scripts/check-payment-signatures.cjs

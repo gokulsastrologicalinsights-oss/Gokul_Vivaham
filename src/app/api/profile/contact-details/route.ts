@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { membershipError, requireMember } from '@/lib/membership/server';
 import { canDiscoverProfile } from '@/lib/profile-eligibility';
+import { isSameOrigin } from '@/lib/request-origin';
 
 const input = z.object({
   profileId: z.string().trim().min(1).max(64).optional(),
@@ -12,6 +13,7 @@ const input = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const member = await requireMember();
   if (!member) return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
 
@@ -60,12 +62,23 @@ export async function POST(request: Request) {
   if (!targetAccount) return NextResponse.json({ error: 'Target profile not found.' }, { status: 404 });
 
   try {
-    const { data: purchasedUnlock } = await supabaseAdmin
+    // Fetch usable contact data before the transactional quota operation.
+    // A failed lookup must not consume a contact allowance.
+    const { data: targetUser, error: contactError } = await supabaseAdmin
+      .from('users')
+      .select('email,mobile_number')
+      .eq('id', targetProfile.user_id)
+      .maybeSingle();
+    if (contactError || !targetUser || (!targetUser.email?.trim() && !targetUser.mobile_number?.trim())) {
+      throw new Error('Contact details unavailable');
+    }
+    const { data: purchasedUnlock, error: unlockError } = await supabaseAdmin
       .from('contact_unlocks')
       .select('id')
       .eq('user_id', member.memberId)
       .eq('target_profile_id', targetProfile.id)
       .maybeSingle();
+    if (unlockError) throw new Error('Contact access unavailable');
 
     let usage: Record<string, unknown> = {
       already_revealed: Boolean(purchasedUnlock),
@@ -80,13 +93,6 @@ export async function POST(request: Request) {
       if (error) throw error;
       usage = data as Record<string, unknown>;
     }
-
-    const { data: targetUser, error: contactError } = await supabaseAdmin
-      .from('users')
-      .select('email,mobile_number')
-      .eq('id', targetProfile.user_id)
-      .maybeSingle();
-    if (contactError || !targetUser) throw new Error('Contact details unavailable');
 
     return NextResponse.json(
       {

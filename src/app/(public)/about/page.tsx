@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart, ShieldCheck, Star, Users, CheckCircle2, Sparkles } from 'lucide-react';
+import { Heart, ShieldCheck, Star, Users, Sparkles } from 'lucide-react';
 
 export default function About() {
   return (
@@ -25,10 +25,10 @@ export default function About() {
             Our Noble Mission
           </h2>
           <p className="text-sm text-zinc-655 dark:text-zinc-400 leading-relaxed font-light">
-            Founded with a vision to simplify candidate matchmaking while keeping culture intact, **Gokul Vivaham** has grown into one of the most trusted matrimonial portals for South Indian communities. We believe a marriage is not just the union of two individuals, but the coming together of two families with shared values, respect, and compatibility.
+            Gokul Vivaham helps adults seeking marriage and the families supporting them explore suitable matrimonial introductions. Our mission is to make it easier to discover people with shared values, preferences and cultural backgrounds, with a focus on Tamil, Telugu and other South Indian communities.
           </p>
           <p className="text-sm text-zinc-655 dark:text-zinc-400 leading-relaxed font-light">
-            By blending traditional horoscope checking methods with smart digital filtering, we allow members to discover their life partners securely and efficiently.
+            Members can create profiles, browse eligible matches, set partner preferences, exchange permitted interests and messages, and access contact details through eligible memberships or individual unlocks. Optional horoscope matching and astrology consultations support families who value traditional guidance.
           </p>
         </div>
         <div className="w-48 h-48 shrink-0 rounded-2xl bg-gradient-to-tr from-sandal-100 to-gold-100 dark:from-zinc-850 dark:to-maroon-950/20 flex items-center justify-center relative overflow-hidden">
@@ -48,9 +48,9 @@ export default function About() {
             <div className="w-10 h-10 rounded-lg bg-maroon-500/10 flex items-center justify-center text-maroon-600 dark:text-gold-400">
               <ShieldCheck className="h-5 w-5" />
             </div>
-            <h4 className="text-base font-serif font-bold text-zinc-800 dark:text-zinc-200">100% Verification</h4>
+            <h4 className="text-base font-serif font-bold text-zinc-800 dark:text-zinc-200">Responsible Introductions</h4>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 font-light leading-relaxed">
-              Every registration must verify their mobile details and submit identity verification prior to receiving visibility.
+              Verification badges describe completed checks. They do not guarantee identity or every profile statement. Independently check important details before making a commitment.
             </p>
           </div>
 
@@ -70,7 +70,7 @@ export default function About() {
             </div>
             <h4 className="text-base font-serif font-bold text-zinc-800 dark:text-zinc-200">Astro Match Checking</h4>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 font-light leading-relaxed">
-              Instantly review Rasi coordinates and download candidate horoscopes for a detailed evaluation with your family astrologer.
+              Explore available horoscope compatibility tools and optional reports or consultations. Access depends on permissions and plan benefits; astrology does not guarantee a marriage outcome.
             </p>
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function About() {
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 translate-x-10 -translate-y-10" />
         <h3 className="text-2xl font-serif font-bold">Ready to find your companion?</h3>
         <p className="text-sm text-maroon-100 max-w-md font-light leading-relaxed">
-          Create your account today and unlock compatible recommendations matching your education, location, and astrology profile.
+          Explore introductions based on your preferences. Gokul Vivaham facilitates discovery and communication; member responses, compatibility and marriage outcomes cannot be guaranteed.
         </p>
         <Link
           href="/register"

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, Mail, Phone, MapPin } from 'lucide-react';
 import { contactConfig } from '@/config/contact.config';
+import { informationPages } from '@/config/information-pages';
 import { useAuth } from '@/hooks/useAuth';
 import { getAuthenticatedLandingPath } from '@/lib/auth/navigation';
 
@@ -18,7 +19,7 @@ export default function Footer() {
     return null;
   }
   return (
-    <footer className="w-full bg-card border-t border-border py-12 md:py-16 transition-colors">
+    <footer className="w-full bg-card border-t border-border pt-12 pb-28 md:py-16 transition-colors">
       <div className="site-container">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           
@@ -155,16 +156,14 @@ export default function Footer() {
             </div>
             
             {/* Legal Pages footer links */}
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] font-medium text-muted">
-              <Link href="/terms" className="hover:underline hover:text-primary">Terms &amp; Conditions</Link>
-              <Link href="/privacy-policy" className="hover:underline hover:text-primary">Privacy Policy</Link>
-              <Link href="/refund-policy" className="hover:underline hover:text-primary">Refund &amp; Cancellation</Link>
+            <nav aria-label="Information and legal pages" className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs font-medium text-muted [&_a]:py-2 [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-4">
+              {informationPages.map(page => <Link key={page.href} href={page.href} className="hover:underline hover:text-primary">{page.label}</Link>)}
               <Link href="/cookie-policy" className="hover:underline hover:text-primary">Cookie Policy</Link>
               <Link href="/community-guidelines" className="hover:underline hover:text-primary">Community Guidelines</Link>
               <Link href="/safety-tips" className="hover:underline hover:text-primary">Safety Tips</Link>
               <Link href="/verification-policy" className="hover:underline hover:text-primary">Verification Policy</Link>
               <Link href="/data-deletion" className="hover:underline hover:text-primary">Data Deletion</Link>
-            </div>
+            </nav>
           </div>
         </div>
       </div>

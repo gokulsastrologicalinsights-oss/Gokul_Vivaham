@@ -1,27 +1,19 @@
 import PolicyPage from '@/components/PolicyPage';
-export default function Page(){return <PolicyPage title="Refund & Cancellation Policy" sections={[
-  {
-    "title": "Membership plans",
-    "text": "Activated membership plans are non-refundable. Deleting your account, discontinuing use, unused membership time, lack of replies or an unsuccessful match does not qualify for a refund under our standard policy. Membership does not guarantee marriage or a particular outcome."
-  },
-  {
-    "title": "Duplicate payments",
-    "text": "If you paid twice for the same purchase, contact support with both payment IDs, the payment date and your registered email. After admin verification, the additional duplicate payment will be refunded to the original payment method within 5–7 working days from completion of verification. Bank/payment-provider processing may affect when the credit appears. Do not send card details, passwords or OTPs."
-  },
-  {
-    "title": "Payment deducted but plan not activated",
-    "text": "Contact support with your payment ID and registered email. Admin verification is targeted within 24 hours after the issue and necessary payment details are received. After a successful payment is verified, we activate the purchased plan; delayed activation alone does not qualify for a refund under our standard policy. Support is available during the hours below. If verification cannot be completed within 24 hours, contact our office for an update. A failed payment or temporary bank hold is not a confirmed purchase; its reversal follows the bank/payment-provider process."
-  },
-  {
-    "title": "Astrology consultations",
-    "text": "Once a consultation is booked, customer cancellations and refunds are not available under our standard policy. To request a different slot, call our office/customer-care number or contact us on WhatsApp. A requested change is subject to availability and confirmation by the office; it is not an automatic cancellation or refund."
-  },
-  {
-    "title": "Applicable consumer rights",
-    "text": "These standard policies do not exclude refunds, remedies or other rights required by applicable law, including where a service is not provided or is deficient. If we cannot provide a booked service, contact support to resolve the issue; any legally required remedy remains available."
-  },
-  {
-    "title": "Prices and receipts",
-    "text": "The amount shown at checkout is the service price payable after any valid discount. We issue payment receipts."
-  }
-]} />;}
+import PolicyPlanSummary from '@/components/PolicyPlanSummary';
+import { informationMetadata } from '@/config/information-pages';
+
+export const metadata = informationMetadata('Refund and Cancellation Policy', 'Membership cancellation, verified duplicate payments, activation problems, failed transactions and how to request a payment review at Gokul Vivaham.');
+
+export default function Page() {
+  return <PolicyPage title="Refund & Cancellation Policy" reviewedOn="16 October 2026" sections={[
+    { title: 'Membership purchases and unused benefits', text: 'Activated memberships are non-refundable under the existing standard policy. Discontinuing use, account deletion, unused time or contact allowances, lack of replies or failure to find a match do not by themselves qualify for a refund. Membership purchases do not guarantee marriage or a particular outcome. This policy does not limit any refund or remedy required by law, including for services not provided or deficient services.' },
+    { title: 'Cancellation, expiry and renewal', text: 'Dashboard → Subscription provides membership cancellation. Confirming it immediately deactivates the membership benefits, even if time remains. Cancellation does not automatically issue a refund. If you only want to stop future use, the current checkout uses one-time payments and creates no automatic renewal mandate; the paid term ends on its recorded expiry unless you purchase again. Unused contact allowances expire with that term or cancellation and are not carried forward. Contact support about any separately arranged recurring payment before assuming it has stopped.' },
+    { title: 'Duplicate payments', text: 'If you paid twice for the same purchase, contact support with both payment IDs, dates and your registered email. After administrator verification, the additional duplicate payment will be refunded to the original payment method within 5–7 working days from completion of verification. Bank or payment-provider processing may affect when the credit appears. Keep the review reference and contact support for the refund status if the credit is delayed.' },
+    { title: 'Payment deducted but membership not activated', text: 'Contact support with the payment ID and registered email. Administrator verification is targeted within 24 hours after receipt of the issue and necessary payment details. A verified successful purchase is activated; delayed activation alone does not qualify for a refund under the standard policy. If verification cannot be completed within 24 hours, contact the office for an update. If the service cannot be supplied or is deficient, applicable legal remedies remain available. Avoid paying again until the first transaction status has been checked.' },
+    { title: 'Failed transactions and bank holds', text: 'An unsuccessful checkout, pending bank debit or temporary hold is not proof of a completed purchase. Check the bank/payment-provider status and share the transaction reference with support if money was debited. Reversal and any applicable compensation for failed transactions follow the relevant bank, payment system and applicable RBI requirements. The duplicate-payment refund timeline is not a substitute for a mandatory failed-transaction reversal deadline. We do not promise one reversal time for every payment method.' },
+    { title: 'Contact access and other purchases', text: 'A first successful membership contact retrieval recorded in the active period counts toward its allowance; repeats in that period do not count again. A failed server lookup or failed usage save does not produce a successful reveal. If your browser disconnects after a recorded reveal, retry the same contact or send support the profile reference and time of the problem. A separate single-contact unlock is currently ₹199 and does not use membership credits; its availability still depends on privacy and safety restrictions. A separate discretionary refund rule for contact unlocks or featured-profile purchases is not published: ask support for review if access or fulfilment fails. No additional fixed refund deadline for those cases is promised; applicable legal remedies remain available.' },
+    { title: 'Astrology consultations', text: 'Customer cancellations and refunds for booked consultations are unavailable under the existing standard policy, subject to mandatory legal remedies. Request a slot change through the published office number or WhatsApp. Changes require office confirmation and availability. If we cannot provide a booked service, contact support to resolve it; legally required remedies remain available.' },
+    { title: 'Requesting a review and expected handling', text: 'Use the published support email or phone, WhatsApp, or the signed-in contact form. Include your registered email, purchase type, payment/order IDs, payment date, amount and a short explanation. For duplicate payments, include both references; for access failures, include the profile reference and time. Never send full card details, passwords, OTPs or banking credentials. The form saves a ticket and reference; read its reply under My support requests. Support aims to acknowledge complaints within 48 hours and resolve them within one month, subject to applicable law. The 24-hour verification target and 5–7 working-day duplicate-refund rule above apply to their specific cases. There is no separately verified universal approval period for every refund request. Ask support for an update using your reference.' },
+    { title: 'Prices, receipts and consumer rights', text: 'The checkout amount is the service price after any valid discount; payment receipts are available through the account billing workflow. No blanket exclusion in this policy overrides rights under applicable Indian consumer or payment law. You may raise an unresolved dispute with the relevant payment provider, competent consumer forum or other authority. Refund decisions must be assessed in light of the service supplied and applicable law.' },
+  ]}><PolicyPlanSummary /></PolicyPage>;
+}
