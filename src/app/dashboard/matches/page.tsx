@@ -27,12 +27,9 @@ function MatchesContent() {
   const searchParams = useSearchParams();
 
   // Search Param Initializer
-  const initialGender = searchParams?.get('gender') === 'Male' ? 'Male' : 'Female';
   const initialReligion = searchParams?.get('religion') || 'Hindu';
 
   // Filter States
-  const [gender, setGender] = useState(initialGender);
-  const [eligibleGender, setEligibleGender] = useState<string | null>(null);
   const [ageMin, setAgeMin] = useState(21);
   const [ageMax, setAgeMax] = useState(32);
   const [religion, setReligion] = useState(initialReligion);
@@ -42,8 +39,11 @@ function MatchesContent() {
   const [padam, setPadam] = useState('');
   const [location, setLocation] = useState('');
   const [profession, setProfession] = useState('');
-  const filterKey = useDebounce(JSON.stringify({gender,ageMin,ageMax,religion,caste,rasi,star,padam,location,profession}),250);
-  const [pagination, setPagination] = useState({filterKey:'',offset:0});
+  const filterKey = useDebounce(JSON.stringify({ageMin,ageMax,religion,caste,rasi,star,padam,location,profession}),250);
+  const [pagination, setPagination] = useState({filterKey,offset:0});
+  if (pagination.filterKey !== filterKey) {
+    setPagination({filterKey,offset:0});
+  }
   const pageOffset = pagination.filterKey === filterKey ? pagination.offset : 0;
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 50;
@@ -141,11 +141,9 @@ function MatchesContent() {
 
   // Sync state if URL search parameters change
   useEffect(() => {
-    const gen = searchParams?.get('gender');
     const rel = searchParams?.get('religion');
-    if (gen && !eligibleGender) setGender(gen === 'Male' ? 'Male' : 'Female');
     if (rel) setReligion(rel);
-  }, [searchParams, eligibleGender]);
+  }, [searchParams]);
 
   // Live profiles state fetched from database
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
@@ -164,14 +162,10 @@ function MatchesContent() {
           // Resolve user's database ID and role
           const { data: userRow } = await supabase
             .from('users')
-            .select('id, role, profiles(is_premium,gender)')
+            .select('id, role, profiles(is_premium)')
             .eq('auth_user_id', user.id)
             .maybeSingle();
 
-          const mine = (userRow as any)?.profiles;
-          const opposite = mine?.gender === 'Male' ? 'Female' : mine?.gender === 'Female' ? 'Male' : null;
-          setEligibleGender(opposite);
-          if (opposite) setGender(opposite);
           const dbUserId = userRow?.id || user.id;
           setCurrentUserId(dbUserId);
 
@@ -199,10 +193,16 @@ function MatchesContent() {
         const result = await matchService.getMatches({...JSON.parse(filterKey),limit:pageSize,offset:pageOffset});
         if (!active) return;
         if (result.error) throw result.error;
+        if (result.eligibleGender !== 'Male' && result.eligibleGender !== 'Female') {
+          setAllProfiles([]);
+          setTotalCount(0);
+          setLoadError('Please complete a valid gender in your profile before searching for matches. Contact support if you need help correcting it.');
+          return;
+        }
         if (result.data) {
           const mapped = result.data;
           setAllProfiles(mapped);
-          setTotalCount(result.total || mapped.length);
+          setTotalCount(result.total ?? 0);
           const statusResult = await matchService.getRequestStatuses(mapped.map((profile: any) => profile.user_id).filter(Boolean));
           if (!statusResult.error) setRequestStatuses(statusResult.data as Record<string, RequestStatus>);
         }
@@ -367,9 +367,6 @@ function MatchesContent() {
 
         {/* LEFT COLUMN: FILTER SIDEBAR */}
         <MatchFilters
-          gender={gender}
-          setGender={setGender}
-          eligibleGender={eligibleGender}
           ageMin={ageMin}
           setAgeMin={setAgeMin}
           ageMax={ageMax}

@@ -71,9 +71,14 @@ test('purchased contact history does not disclose a now-ineligible profile or it
 test('search rejects actor/admin payloads and forwards valid filters to request-scoped RPC',async()=>{
   const h=harness('src/app/api/matches/route.ts');
   assert.equal((await h.exports.GET(new Request('https://test.local?actor='+target+'&isAdmin=true'))).status,400);
-  const r=await h.exports.GET(new Request('https://test.local?gender=Male&limit=1&offset=1'));
+  for (const gender of ['Male','Female','Other']) {
+    assert.equal((await h.exports.GET(new Request('https://test.local?gender='+gender))).status,400);
+  }
+  assert.equal(h.calls.length,0,'Rejected filters must not reach discovery');
+  const r=await h.exports.GET(new Request('https://test.local?ageMin=25&religion=Hindu&limit=1&offset=1'));
   assert.equal(r.status,200);const call=h.calls.find(c=>c.requestRpc);assert.equal(call.requestRpc,'discover_profile_cards');
-  assert.equal(call.args.filters.gender,'Male');assert.equal(call.args.page_offset,1);assert.equal(h.calls.some(c=>c.table==='profiles'),false);
+  assert.equal('gender' in call.args.filters,false);assert.equal(call.args.filters.ageMin,25);assert.equal(call.args.filters.religion,'Hindu');
+  assert.equal(call.args.page_offset,1);assert.equal(h.calls.some(c=>c.table==='profiles'),false);
 });
 test('eligibility helper uses only the request client and fails closed on an RPC error',async()=>{
   const h=harness('src/lib/profile-eligibility.ts',{allowed:true,requestError:{message:'schema unavailable'}});

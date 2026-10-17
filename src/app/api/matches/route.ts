@@ -5,7 +5,6 @@ import { createRequestClient } from '@/lib/supabase/server';
 import { withAuthorizedCardPhotos } from '@/lib/profile-card-photos';
 
 const input = z.object({
-  gender: z.enum(['Male','Female']).optional(),
   ageMin: z.coerce.number().int().min(18).max(120).optional(),
   ageMax: z.coerce.number().int().min(18).max(120).optional(),
   religion: z.string().max(100).optional(), caste: z.string().max(100).optional(),

@@ -8,7 +8,6 @@ const isMockMode = () => {
 
 export const matchService = {
   async getMatches(filters?: {
-    gender?: string;
     ageMin?: number;
     ageMax?: number;
     religion?: string;
@@ -23,142 +22,10 @@ export const matchService = {
   }) {
     try {
       if (isMockMode()) {
-        return { data: [
-          {
-            id: 'GVV-089',
-            name: 'Gokulakrishnan M.',
-            gender: 'Male',
-            age: 28,
-            height_cm: 178,
-            religion: 'Hindu',
-            caste: 'Iyer',
-            sub_caste: 'Vadama',
-            rasi: 'Dhanusu',
-            nakshatra: 'Pooradam',
-            padam: '2',
-            gothram: 'Bharadwaj',
-            city: 'Bangalore',
-            native_place: 'Thanjavur',
-            education: 'MBA Project Manager',
-            company_name: 'TCS',
-            annual_income: 1400000,
-            about_me: 'A simple, modern individual who values family traditions. Enjoys travel, South Indian music, and reading.',
-            family_type: 'Nuclear',
-            siblings: '1 sister (married)',
-            is_verified: true,
-            is_premium: true,
-            marital_status: 'Never Married',
-            score: 95
-          },
-          {
-            id: 'GVV-045',
-            name: 'Venkatesh Prasad S.',
-            gender: 'Male',
-            age: 30,
-            height_cm: 174,
-            religion: 'Hindu',
-            caste: 'Iyer',
-            sub_caste: 'Vadama',
-            rasi: 'Mesham',
-            nakshatra: 'Aswini',
-            padam: '1',
-            gothram: 'Srivatsa',
-            city: 'Chennai',
-            native_place: 'Madurai',
-            education: 'MS Cloud Architect',
-            company_name: 'Cognizant',
-            annual_income: 1800000,
-            about_me: 'Career-oriented but down-to-earth. Respects values and loves visiting temples. Looking for a compatible life partner.',
-            family_type: 'Joint',
-            siblings: 'None',
-            is_verified: true,
-            is_premium: false,
-            marital_status: 'Never Married',
-            score: 88
-          },
-          {
-            id: 'GVV-112',
-            name: 'Karthik N.',
-            gender: 'Male',
-            age: 27,
-            height_cm: 180,
-            religion: 'Hindu',
-            caste: 'Iyer',
-            sub_caste: 'Brahacharanam',
-            rasi: 'Simham',
-            nakshatra: 'Pooram',
-            padam: '4',
-            gothram: 'Koundinya',
-            city: 'Singapore',
-            native_place: 'Tiruchirappalli',
-            education: 'B.Tech Tech Lead',
-            company_name: 'Grab',
-            annual_income: 1200000,
-            about_me: 'Living in Singapore for 4 years. Warm-hearted, vegetarian, loves cooking, and values transparency in relationships.',
-            family_type: 'Nuclear',
-            siblings: '1 younger brother',
-            is_verified: true,
-            is_premium: true,
-            marital_status: 'Never Married',
-            score: 91
-          },
-          {
-            id: 'GVV-088',
-            name: 'Soundarya S.',
-            gender: 'Female',
-            age: 26,
-            height_cm: 163,
-            religion: 'Hindu',
-            caste: 'Iyer',
-            sub_caste: 'Vadama',
-            rasi: 'Simham',
-            nakshatra: 'Pooram',
-            padam: '2',
-            gothram: 'Kasyapa',
-            city: 'Chennai',
-            native_place: 'Mylapore',
-            education: 'B.Tech Software Engineer',
-            company_name: 'Amazon',
-            annual_income: 1600000,
-            about_me: 'Traditional at heart with a progressive outlook. Passionate about Classical dance and software design.',
-            family_type: 'Nuclear',
-            siblings: '1 younger brother',
-            is_verified: true,
-            is_premium: true,
-            marital_status: 'Never Married',
-            score: 92
-          },
-          {
-            id: 'GVV-145',
-            name: 'Priya Narayanan',
-            gender: 'Female',
-            age: 27,
-            height_cm: 160,
-            religion: 'Hindu',
-            caste: 'Pillai',
-            sub_caste: 'Saiva Pillai',
-            rasi: 'Rishabham',
-            nakshatra: 'Karthigai',
-            padam: '3',
-            gothram: 'Siva Gothram',
-            city: 'Madurai',
-            native_place: 'Tirunelveli',
-            education: 'M.Com Bank Manager',
-            company_name: 'SBI',
-            annual_income: 900000,
-            about_me: 'Loving, family-centered person. Loves traditional cooking and values relationship boundaries.',
-            family_type: 'Joint',
-            siblings: '1 sister (married)',
-            is_verified: true,
-            is_premium: false,
-            marital_status: 'Never Married',
-            score: 85
-          }
-        ], error: null };
+        return { data: [], total: 0, eligibleGender: null, error: null };
       }
 
       const params = new URLSearchParams();
-      if (filters?.gender) params.set('gender', filters.gender);
       if (filters?.ageMin) params.set('ageMin', String(filters.ageMin));
       if (filters?.ageMax) params.set('ageMax', String(filters.ageMax));
       if (filters?.religion) params.set('religion', filters.religion);
@@ -242,7 +109,7 @@ export const matchService = {
 
       // Eligibility, blocking, search filters, count and pagination are computed
       // by the authenticated database function before any cards are returned.
-      return { data: formatted || [], total: serverResult.total || 0, error };
+      return { data: formatted || [], total: serverResult.total ?? 0, eligibleGender: serverResult.eligibleGender ?? null, error };
     } catch (err: any) {
       return { data: [], error: err };
     }

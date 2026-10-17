@@ -39,6 +39,7 @@ before(async () => {
   await db.query(`insert into storage.objects(id,bucket_id,name,owner) values ($1,'photos',$2,$3)`,[id(870),`${id(102)}/${id(880)}/display.webp`,id(102)]);
   await db.query(`insert into storage.objects(id,bucket_id,name,owner) values ($1,'chat-images',$2,$3)`,[id(871),`${id(101)}/message.webp`,id(101)]);
   await db.query('update chat_messages set image_url=$1 where id=$2',[`${id(101)}/message.webp`,id(840)]);
+  await db.exec("update profiles set caste='Iyer',rasi='Mesham',nakshatra='Aswini',padam='1'");
   await db.exec(migration);
 });
 after(async()=>{if(db)await db.close();});
@@ -84,6 +85,38 @@ test('count and page boundaries follow eligibility and every search filter',asyn
 });
 test('free members cannot bypass advanced-filter membership via direct RPC',async()=>{
   await asMember(2,async()=>{await assert.rejects(()=>cards({location:'Chennai'}));});
+});
+
+test('every existing search filter applies before eligible counts and page boundaries',async()=>{
+  await asMember(1,async()=>{
+    for(const [key,match,miss] of [
+      ['ageMin',28,29],['ageMax',28,27],['religion','Hindu','Christian'],['caste','Iyer','Pillai'],
+      ['rasi','Mesham','Simham'],['star','Aswini','Pooram'],['padam','1','2'],
+      ['location','Chennai','Madurai'],['profession','Engineer','Doctor'],
+    ]) {
+      const result=await cards({[key]:match},1,1);
+      assert.equal(result.total,2,key);assert.equal(result.profiles.length,1,key);
+      assert.equal(result.profiles[0].gender,'Female',key);
+      const excluded=await cards({[key]:miss});assert.equal(excluded.total,0,key);assert.equal(excluded.profiles.length,0,key);
+    }
+  });
+});
+
+test('newly registered male and female profiles receive automatic eligibility immediately',async()=>{
+  for(const gender of ['Male','Female']) {
+    await db.exec('begin');
+    try {
+      await db.query('insert into auth.users values ($1)',[id(120)]);
+      await db.query('insert into auth.sessions values ($1,$2,null)',[id(320),id(120)]);
+      await db.query("insert into users(id,auth_user_id,role,status) values($1,$2,'user','active')",[id(20),id(120)]);
+      await db.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:id(120),session_id:id(320),role:'authenticated',aal:'aal1'})]);
+      await db.exec('set local role authenticated');
+      await db.query("insert into profiles(id,user_id,gender,visibility,is_suspended,is_banned) values($1,$2,$3,'public',false,false)",[id(220),id(20),gender]);
+      const result=await cards();assert.ok(result.total>0);
+      assert.equal(result.eligibleGender,gender==='Male'?'Female':'Male');
+      assert.ok(result.profiles.every(p=>p.gender===result.eligibleGender));
+    } finally {await db.exec('rollback');}
+  }
 });
 test('cards never contain birth date, contacts, document references or moderation notes',async()=>{
   await asMember(1,async()=>{for(const p of (await cards()).profiles)for(const key of ['date_of_birth','email','mobile_number','id_verification_document_url','warning_notes'])assert.equal(key in p,false);});
