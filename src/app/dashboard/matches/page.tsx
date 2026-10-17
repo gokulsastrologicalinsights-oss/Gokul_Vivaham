@@ -401,7 +401,7 @@ function MatchesContent() {
         />
 
         {/* RIGHT COLUMN: PROFILES LISTING */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
+        <div className="lg:col-span-8 min-w-0 flex flex-col gap-6">
 
           <div className="text-xs text-zinc-500 font-medium">
             Found {totalCount} matching profile(s)
@@ -413,99 +413,133 @@ function MatchesContent() {
             <button type="button" disabled={loading || pageOffset+pageSize >= totalCount} onClick={() => setPagination({filterKey,offset:pageOffset+pageSize})}>Next</button>
           </nav>}
           {filteredProfiles.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-x-7 gap-y-10">
               {filteredProfiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className="bg-white dark:bg-zinc-900 rounded-3xl p-5 shadow-md border border-sandal-200 dark:border-zinc-800/80 hover:shadow-lg transition-all flex flex-col justify-between relative overflow-hidden animate-fade-in"
+                  className="flex h-full min-w-0 flex-col text-left"
                 >
-                  {/* Photo Section */}
-                  <div className="w-full h-40 rounded-2xl bg-gradient-to-tr from-sandal-100 to-amber-50 dark:from-zinc-800 dark:to-zinc-850 flex items-center justify-center relative">
-                    <Sparkles className="h-10 w-10 text-maroon-500/10" />
-
-                    <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1.5 items-start">
-                      <VerificationBadges profile={profile} size="sm" />
-                      {unlockedProfiles.has(profile.id) && (
-                        <span className="bg-emerald-600 text-white text-[8px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-0.5 select-none uppercase tracking-wide">
-                          <Unlock className="h-2.5 w-2.5" /> Unlocked
-                        </span>
-                      )}
+                  {/* Portrait: use only the photograph already supplied with this result. */}
+                  <div className="relative isolate aspect-[4/5] w-full overflow-hidden rounded-2xl bg-surface shadow-sm">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted" aria-hidden="true">
+                      <span className="flex h-24 w-24 items-center justify-center rounded-full bg-background font-serif text-4xl text-primary/50">
+                        {profile.name?.trim().split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('')}
+                      </span>
+                      <span className="text-xs tracking-wide">Photo unavailable</span>
                     </div>
+                    {profile.image_url && (
+                      // Keep the existing image URL; no image service or configuration changes.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={profile.image_url}
+                        alt={`Portrait of ${profile.name}`}
+                        width={640}
+                        height={800}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full object-cover object-[center_25%]"
+                        onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                      />
+                    )}
 
                     {profile.is_featured && (
-                      <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-amber-500 to-gold-500 text-zinc-950 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono shadow-sm flex items-center gap-0.5 z-10 select-none border border-gold-450">
-                        <Star className="h-3 w-3 fill-zinc-950 text-zinc-950" /> Featured
+                      <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-background/95 px-3 py-1.5 text-[10px] font-medium tracking-wide text-foreground shadow-sm">
+                        <Star className="h-3 w-3 text-primary" /> Featured
                       </div>
+                    )}
+                    {unlockedProfiles.has(profile.id) && (
+                      <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm">
+                        <Unlock className="h-3 w-3 text-primary" /> Unlocked
+                      </span>
                     )}
 
                     {isPremium ? (
-                      <div className="absolute bottom-2.5 right-2.5 px-2.5 py-0.5 rounded bg-white/95 dark:bg-zinc-900/95 text-xs font-semibold text-maroon-700 dark:text-gold-450 shadow-sm">
+                      <div className="absolute bottom-3 left-3 right-3 w-fit max-w-[calc(100%-1.5rem)] rounded-lg bg-background/95 px-3 py-2 text-xs font-medium text-foreground shadow-sm">
                         {profile.score}% Indicative Compatibility
                       </div>
                     ) : (
                       <button
                         onClick={() => setShowUpgradePrompt(true)}
-                        className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-600 text-[9px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-md cursor-pointer focus:outline-none"
+                        className="absolute bottom-3 left-3 min-h-11 max-w-[calc(100%-1.5rem)] cursor-pointer rounded-full bg-background/95 px-4 py-2 text-xs font-medium text-primary shadow-sm transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
                         🔒 Unlock Astro Score
                       </button>
                     )}
                   </div>
 
-                  {/* Text details */}
-                  <div className="mt-4 text-left flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-base font-serif font-bold text-zinc-850 dark:text-zinc-100 truncate">
-                        {profile.name}
-                      </h3>
-                      <span className="text-[10px] text-zinc-400 font-mono shrink-0">{profile.id}</span>
+                  <div className="flex flex-1 flex-col px-1 pt-5">
+                    <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[10px] font-medium tracking-widest text-muted">{profile.id}</span>
+                      <VerificationBadges profile={profile} size="sm" className="relative ml-auto [&>div]:static [&>div]:shadow-none [&>div>div]:left-auto [&>div>div]:right-0 [&>div>div]:translate-x-0" />
                     </div>
+                    <h3 className="break-words font-serif text-2xl font-semibold leading-tight text-foreground">
+                      {profile.name}
+                    </h3>
+                    <p className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-sm leading-relaxed text-muted">
+                      <span>{profile.age} yrs</span>
+                      {(profile.height || profile.height_cm) && <span>· {profile.height || `${profile.height_cm} cm`}</span>}
+                      <span>· {profile.maritalStatus || profile.marital_status || 'Never Married'}</span>
+                    </p>
 
-                    <ul className="space-y-1 text-xs text-zinc-650 dark:text-zinc-400 font-light">
-                      <li>{profile.age} yrs • {profile.height} • {profile.maritalStatus || 'Never Married'}</li>
-                      <li className="font-semibold text-zinc-800 dark:text-zinc-300">{profile.education}</li>
-                      <li>{profile.location}</li>
-                      <li className="font-semibold text-gold-600 dark:text-gold-400 pt-1.5 uppercase text-[9px] tracking-wider">
-                        {isPremium ? (
-                          `${profile.rasi} Rasi • ${profile.star} • ${profile.gothram}`
-                        ) : (
-                          "🔒 Star & Rasi Hidden (Upgrade)"
-                        )}
-                      </li>
-                    </ul>
-                  </div>
+                    <dl className="my-5 space-y-3 text-sm leading-relaxed">
+                      {profile.education && (
+                        <div>
+                          <dt className="text-[10px] font-medium uppercase tracking-widest text-muted">Education</dt>
+                          <dd className="mt-0.5 break-words text-foreground">{profile.education}</dd>
+                        </div>
+                      )}
+                      {(profile.occupation || profile.profession) && (
+                        <div>
+                          <dt className="text-[10px] font-medium uppercase tracking-widest text-muted">Occupation</dt>
+                          <dd className="mt-0.5 break-words text-foreground">{profile.occupation || profile.profession}</dd>
+                        </div>
+                      )}
+                      {(profile.location || profile.city) && (
+                        <div>
+                          <dt className="text-[10px] font-medium uppercase tracking-widest text-muted">Location</dt>
+                          <dd className="mt-0.5 break-words text-foreground">{profile.location || profile.city}</dd>
+                        </div>
+                      )}
+                    </dl>
 
-                  {/* Actions Bar */}
-                  <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-850 flex items-center gap-2">
+                    {isPremium ? (
+                      (profile.rasi || profile.star || profile.nakshatra || profile.gothram) && (
+                        <div className="mb-5 flex flex-wrap gap-x-4 gap-y-1 border-t border-border/60 pt-3 text-xs leading-relaxed text-muted">
+                          {profile.rasi && <span>Raasi: {profile.rasi}</span>}
+                          {(profile.star || profile.nakshatra) && <span>Nakshatra: {profile.star || profile.nakshatra}</span>}
+                          {profile.gothram && <span>Gothram: {profile.gothram}</span>}
+                        </div>
+                      )
+                    ) : (
+                      <p className="mb-5 border-t border-border/60 pt-3 text-xs leading-relaxed text-muted">🔒 Star &amp; Rasi Hidden (Upgrade)</p>
+                    )}
 
-                    {/* Shortlist Icon Button */}
-                    <button
-                      onClick={() => toggleShortlist(profile.id, profile.name)}
-                      className={`p-2 rounded-lg border transition-colors cursor-pointer ${
-                        shortlisted[profile.user_id]
-                          ? 'border-rose-300/40 bg-rose-500/10 text-rose-600'
-                          : 'border-zinc-200 dark:border-zinc-850 text-zinc-400 hover:text-zinc-600'
-                      }`}
-                      title={shortlisted[profile.id] ? 'Remove Shortlist' : 'Shortlist Profile'}
-                    >
-                      <Heart className={`h-4.5 w-4.5 ${shortlisted[profile.id] ? 'fill-rose-500' : ''}`} />
-                    </button>
-
-                    {/* View Profile */}
-                    <button
-                      onClick={() => setActiveProfile(profile)}
-                      className="flex-1 py-2 text-center rounded-lg border border-zinc-200 dark:border-zinc-855 text-xs font-semibold text-zinc-600 dark:text-zinc-350 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                    >
-                      View Details
-                    </button>
-
-                    {/* Directional interest state */}
-                    <div className="flex-1">
-                      {renderInterestActions(profile)}
+                    {/* Existing actions and handlers, with touch-friendly sizing. */}
+                    <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                      <button
+                        onClick={() => toggleShortlist(profile.id, profile.name)}
+                        className={`flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          shortlisted[profile.user_id]
+                            ? 'border-primary/30 bg-primary/5 text-primary'
+                            : 'border-border text-muted hover:border-primary/40 hover:text-primary'
+                        }`}
+                        title={shortlisted[profile.id] ? 'Remove Shortlist' : 'Shortlist Profile'}
+                        aria-label={shortlisted[profile.id] ? 'Remove Shortlist' : 'Shortlist Profile'}
+                        aria-pressed={!!shortlisted[profile.user_id]}
+                      >
+                        <Heart className={`h-4.5 w-4.5 ${shortlisted[profile.id] ? 'fill-current' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => setActiveProfile(profile)}
+                        className="min-h-11 flex-1 cursor-pointer rounded-full border border-border px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      >
+                        View Details
+                      </button>
+                      <div className="min-w-0 basis-full [&_button]:min-h-11 [&_button]:rounded-full [&_button]:shadow-none">
+                        {renderInterestActions(profile)}
+                      </div>
                     </div>
-
                   </div>
-
                 </div>
               ))}
             </div>
@@ -789,3 +823,4 @@ export default function Matches() {
     </Suspense>
   );
 }
+
